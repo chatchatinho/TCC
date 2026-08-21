@@ -16,13 +16,21 @@ const ACCENT_PALETTES = {
 
 const ThemeContext = createContext(null);
 
-function readStoredDarkMode() {
+// `null` = o usuário nunca escolheu um modo manualmente em Configurações — o tema
+// segue o sistema operacional automaticamente. Uma vez escolhido, vira `true`/`false`
+// fixo (persistido), até o usuário clicar em "Seguir o sistema novamente".
+function readExplicitDarkPreference() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY_DARK);
-    if (stored !== null) return stored === 'true';
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
   } catch {
-    /* localStorage indisponível (ex. modo privado) — cai no padrão do sistema */
+    /* localStorage indisponível (ex. modo privado) */
   }
+  return null;
+}
+
+function getSystemPrefersDark() {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;
 }
 
@@ -45,16 +53,26 @@ function applyAccent(accent) {
 }
 
 export function ThemeProvider({ children }) {
-  const [darkMode, setDarkMode] = useState(readStoredDarkMode);
+  const [explicitPreference, setExplicitPreference] = useState(readExplicitDarkPreference);
+  const [systemPrefersDark, setSystemPrefersDark] = useState(getSystemPrefersDark);
   const [accent, setAccentState] = useState(readStoredAccent);
+
+  // Acompanha o tema do sistema operacional em tempo real (ex.: troca automática dia/
+  // noite do Windows/macOS) — só importa enquanto o usuário não tiver escolhido um modo
+  // manualmente; a partir daí a escolha explícita manda, e essa mudança é ignorada.
+  useEffect(() => {
+    const mediaQuery = window.matchMedia?.('(prefers-color-scheme: dark)');
+    if (!mediaQuery) return undefined;
+    const handleChange = (e) => setSystemPrefersDark(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  const darkMode = explicitPreference ?? systemPrefersDark;
+  const followsSystem = explicitPreference === null;
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
-    try {
-      localStorage.setItem(STORAGE_KEY_DARK, String(darkMode));
-    } catch {
-      /* ignora falha ao persistir preferência */
-    }
   }, [darkMode]);
 
   useEffect(() => {
@@ -66,11 +84,42 @@ export function ThemeProvider({ children }) {
     }
   }, [accent]);
 
-  const toggleDarkMode = useCallback(() => setDarkMode((prev) => !prev), []);
+  const toggleDarkMode = useCallback(() => {
+    setExplicitPreference((prevExplicit) => {
+      const next = !(prevExplicit ?? getSystemPrefersDark());
+      try {
+        localStorage.setItem(STORAGE_KEY_DARK, String(next));
+      } catch {
+        /* ignora falha ao persistir preferência */
+      }
+      return next;
+    });
+  }, []);
+
+  // Descarta a escolha manual e volta a seguir o tema do sistema operacional.
+  const followSystemTheme = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY_DARK);
+    } catch {
+      /* ignora */
+    }
+    setExplicitPreference(null);
+  }, []);
+
   const setAccent = useCallback((key) => setAccentState(ACCENT_PALETTES[key] ? key : 'blue'), []);
 
   return (
-    <ThemeContext.Provider value={{ darkMode, toggleDarkMode, accent, setAccent, accentOptions: Object.keys(ACCENT_PALETTES) }}>
+    <ThemeContext.Provider
+      value={{
+        darkMode,
+        toggleDarkMode,
+        followsSystem,
+        followSystemTheme,
+        accent,
+        setAccent,
+        accentOptions: Object.keys(ACCENT_PALETTES),
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );

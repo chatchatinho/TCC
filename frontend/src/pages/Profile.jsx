@@ -1,12 +1,48 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import * as usersService from '../services/users';
-import { formatDate } from '../utils/format';
+import { formatDate, formatDateTime } from '../utils/format';
 
 const MAX_AVATAR_BYTES = 500 * 1024;
 
+const TABS = [
+  { key: 'data', label: 'Dados' },
+  { key: 'security', label: 'Segurança' },
+];
+
 export default function Profile() {
+  const [activeTab, setActiveTab] = useState('data');
+
+  return (
+    <Layout>
+      <h1 className="mb-6 text-2xl font-semibold text-slate-900 dark:text-slate-100">Perfil</h1>
+
+      <div className="mb-6 flex flex-wrap gap-2">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setActiveTab(tab.key)}
+            className={`rounded-full px-4 py-1.5 text-sm font-medium ${
+              activeTab === tab.key
+                ? 'bg-brand-600 text-white'
+                : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'data' && <DataTab />}
+      {activeTab === 'security' && <SecurityTab />}
+    </Layout>
+  );
+}
+
+function DataTab() {
   const { user, setUser } = useAuth();
   const [fullName, setFullName] = useState(user?.fullName ?? '');
   const [error, setError] = useState('');
@@ -76,9 +112,7 @@ export default function Profile() {
   }
 
   return (
-    <Layout>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900 dark:text-slate-100">Perfil</h1>
-
+    <>
       <div className="max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Foto de perfil (opcional)</p>
         <div className="flex items-center gap-4">
@@ -127,11 +161,19 @@ export default function Profile() {
         <div className="mt-4">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">E-mail</p>
           <p className="text-sm text-slate-700 dark:text-slate-200">{user?.email}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">
+            Não pode ser alterado por aqui — é o identificador de login da conta.
+          </p>
         </div>
 
         <div className="mt-3">
           <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Data de nascimento</p>
           <p className="text-sm text-slate-700 dark:text-slate-200">{formatDate(user?.birthDate)}</p>
+        </div>
+
+        <div className="mt-3">
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Conta criada em</p>
+          <p className="text-sm text-slate-700 dark:text-slate-200">{formatDateTime(user?.createdAt)}</p>
         </div>
 
         {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -145,9 +187,16 @@ export default function Profile() {
           {saving ? 'Salvando…' : 'Salvar alterações'}
         </button>
       </form>
+    </>
+  );
+}
 
+function SecurityTab() {
+  return (
+    <>
       <ChangePasswordForm />
-    </Layout>
+      <DeleteAccountSection />
+    </>
   );
 }
 
@@ -188,7 +237,7 @@ function ChangePasswordForm() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-6 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
+      className="max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800"
     >
       <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Trocar senha</h2>
 
@@ -236,5 +285,99 @@ function ChangePasswordForm() {
         {saving ? 'Salvando…' : 'Trocar senha'}
       </button>
     </form>
+  );
+}
+
+// Apagar a conta é irreversível — exige a senha (mesmo padrão de troca de senha) e uma
+// confirmação explícita antes de habilitar o botão, para reduzir o risco de clique
+// acidental num link tão destrutivo.
+function DeleteAccountSection() {
+  const { setUser } = useAuth();
+  const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirmed, setConfirmed] = useState(false);
+  const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setDeleting(true);
+    try {
+      await usersService.deleteAccount(password);
+      setUser(null);
+      navigate('/login');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível excluir a conta.');
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 max-w-md rounded-xl border border-red-200 bg-white p-6 shadow-sm dark:border-red-500/30 dark:bg-slate-800">
+      <h2 className="mb-1 text-sm font-semibold text-red-700 dark:text-red-400">Excluir conta</h2>
+      <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+        Remove permanentemente sua conta, dispositivos, histórico de leituras, alertas e configurações. Essa ação
+        não pode ser desfeita.
+      </p>
+
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+        >
+          Quero excluir minha conta
+        </button>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Confirme sua senha
+            <input
+              type="password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mt-1 mb-3 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </label>
+
+          <label className="mb-4 flex items-start gap-2 text-xs text-slate-600 dark:text-slate-300">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+              className="mt-0.5"
+            />
+            Entendo que essa ação é permanente e apaga todos os meus dados.
+          </label>
+
+          {error && <p className="mb-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={!confirmed || deleting}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              {deleting ? 'Excluindo…' : 'Excluir permanentemente'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setPassword('');
+                setConfirmed(false);
+                setError('');
+              }}
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+    </div>
   );
 }

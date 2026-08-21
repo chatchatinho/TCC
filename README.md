@@ -17,25 +17,34 @@ Documentação completa em [`docs/`](docs/):
 ## Funcionalidades
 
 - Cadastro e login de usuários (senha com hash bcrypt, sessão via JWT em cookie `httpOnly`)
-- Troca de senha exigindo a senha atual, e recuperação de senha por e-mail ("esqueci
-  minha senha" com token de reset expirando em 1h). Sem SMTP configurado, roda em
-  **modo simulação**: nenhum e-mail é enviado de verdade, o link de redefinição é
-  impresso no console do backend — suficiente para demonstrar o fluxo completo
-  sem depender de credenciais nem de acesso à internet.
+- Perfil dividido em "Dados" (nome, foto, e-mail/data de nascimento somente leitura) e
+  "Segurança" (troca de senha exigindo a senha atual, exclusão de conta com confirmação
+  por senha — some em cascata com dispositivos, histórico, alertas e configurações)
+- Recuperação de senha por e-mail ("esqueci minha senha" com token de reset expirando em
+  1h). Sem SMTP configurado, roda em **modo simulação**: nenhum e-mail é enviado de
+  verdade, o link de redefinição é impresso no console do backend — suficiente para
+  demonstrar o fluxo completo sem depender de credenciais nem de acesso à internet.
 - Foto de perfil opcional
-- Modo escuro e cor de destaque personalizável, em Configurações
+- Modo escuro que segue automaticamente o tema do sistema operacional até o usuário
+  escolher manualmente em Configurações (com opção de voltar a seguir o sistema), e cor
+  de destaque personalizável
 - Dashboard com temperatura/umidade atuais, status do dispositivo (online/sem
-  comunicação/offline) e gráficos de linha com filtro de período
-- Configuração de valores ideais e margens de tolerância de temperatura/umidade
+  comunicação/offline), gráficos de linha com filtro de período, seletor de dispositivo
+  (quando há mais de um) e um resumo compacto dos demais dispositivos no canto
+- Configurações divididas em "Valores" (ideal e tolerância obrigatórios por variável,
+  mais uma taxa mínima/máxima opcional que substitui o cálculo automático quando
+  definida, com botão de restaurar padrões) e "Aparência" (tema, cor de destaque)
 - Detecção automática de leituras fora do limite, com alertas modelados como eventos
   (evita notificação repetida para várias leituras seguidas fora da faixa)
-- Tela dedicada de notificações (menu "Notificações") para as anomalias de
-  temperatura/umidade desde o último acesso — avisadas também por um banner no
-  Dashboard, que leva direto para lá. Abrir a tela já conta como "conferir": as
-  notificações somem dali para frente, até a próxima anomalia
+- Tela dedicada de notificações (menu "Notificações"), separadas por dispositivo em
+  abas — cada aba mostra uma bolinha vermelha com a contagem de notificações não vistas
+  daquele dispositivo, e o menu lateral mostra o total geral. As notificações ficam
+  registradas permanentemente (não somem); só a bolinha de "não vista" desaparece, e
+  isso só acontece quando o usuário expande aquela notificação específica para ver os
+  detalhes — abrir a tela ou trocar de aba não marca nada como lido sozinho
 - Histórico com ordenação (data, temperatura ou umidade, crescente/decrescente),
-  filtros (dispositivo, período, faixa de valores, situação de temperatura e de
-  umidade separadamente) e exportação CSV
+  filtros agrupados por dispositivo/período, temperatura e umidade (faixa de valores e
+  situação separadas) e exportação CSV
 - Gerenciamento de dispositivos ESP32 (token de API com hash, nunca em texto puro)
 - Simulação automática de leituras (a cada 2s, proporção 100:5 normal:fora do limite),
   para todos os dispositivos "virtuais" do usuário mesmo em segundo plano (não só o
@@ -185,12 +194,13 @@ GET    /api/auth/me                POST   /api/devices/:id/rotate-secret
 
 GET    /api/users/me               POST   /api/measurements        (autenticação de dispositivo)
 PUT    /api/users/me               GET    /api/measurements/latest
-                                     POST   /api/measurements/simulate
-GET    /api/settings
-PUT    /api/settings               GET    /api/history
-                                     GET    /api/history/export
-GET    /api/devices                GET    /api/alerts
-                                     GET    /api/alerts/summary
+PUT    /api/users/me/password       POST   /api/measurements/simulate
+DELETE /api/users/me
+                                    GET    /api/history
+GET    /api/settings                GET    /api/history/export
+PUT    /api/settings
+                                    GET    /api/alerts
+GET    /api/devices                 GET    /api/alerts/summary
                                      PATCH  /api/alerts/:id/read
 ```
 

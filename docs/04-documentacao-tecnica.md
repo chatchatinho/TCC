@@ -229,18 +229,35 @@ stateDiagram-v2
     Normal --> [*]
 ```
 
+Os limites usados nessa avaliação vêm de `settingsService.computeThresholds()`: por
+padrão, `min`/`max` = ideal ± tolerância (com umidade sempre confinada a 0-100%), mas o
+usuário pode definir uma taxa mínima e/ou máxima explícita por variável em
+Configurações → Valores (`Setting.temperatureMin/Max`, `humidityMin/Max`, colunas
+nullable) — quando definida, ela substitui aquele lado do cálculo automático,
+independentemente do outro lado. Ideal e tolerância continuam obrigatórios mesmo com as
+taxas definidas (servem de base para o lado não sobrescrito).
+
 Ao logar, o frontend consulta `GET /api/alerts/summary` (conta alertas com
 `read_at IS NULL`, ativos ou já resolvidos) e mostra um banner "Você possui N
-notificações desde seu último acesso" no Dashboard, além de uma bolinha vermelha com
-essa contagem ao lado de "Notificações" no menu lateral (`Layout.jsx`, em polling a
-cada 10s). O banner é só o aviso — a revisão em si acontece na tela dedicada
-`/notifications` (menu "Notificações"), que lista os detalhes de cada anomalia
-(variável, pico, limites, início/fim) e, ao ser aberta, chama `PATCH /api/alerts/:id/read`
-para cada notificação ainda não lida. Ou seja, o simples ato de abrir a tela já "confere"
-as notificações: elas somem do banner, da bolinha do menu e da própria tela a partir da
-próxima visita, até a próxima anomalia. No resumo de outros dispositivos do Dashboard,
-a mesma bolinha aparece ao lado de cada dispositivo com notificação pendente, com a
-contagem quebrada por `device_id` (`GET /api/alerts` filtrado no cliente).
+notificações desde seu último acesso" no Dashboard, além de uma bolinha vermelha bem
+pequena com essa contagem ao lado de "Notificações" no menu lateral (`Layout.jsx`, em
+polling a cada 10s e ao trocar de rota). O banner é só o aviso e leva para a tela
+dedicada `/notifications` (menu "Notificações").
+
+Diferente de uma primeira versão mais simples, as notificações **não somem depois de
+vistas** — a tela mantém o histórico completo, separado por dispositivo em abas (uma
+aba por `device_id` que já teve algum alerta; cada aba também mostra sua própria
+bolinha de contagem não lida, mesmo quando não é a aba selecionada no momento). Cada
+notificação aparece colapsada, numa linha simples (variável + direção + horário) com um
+pontinho vermelho se ainda não foi vista; clicar nela expande os detalhes (pico,
+limites, início/fim) e **só nesse momento** chama `PATCH /api/alerts/:id/read` — abrir a
+tela ou trocar de aba, sozinho, não marca nada como lido. Isso separa duas coisas que a
+primeira versão confundia: "ver que a notificação existe" (abrir a tela) de "confirmar
+que você leu aquela notificação específica" (expandi-la).
+
+No resumo de outros dispositivos do Dashboard, a mesma bolinha aparece ao lado de cada
+dispositivo com notificação pendente, com a contagem quebrada por `device_id`
+(`GET /api/alerts` filtrado no cliente, já que a API não expõe esse agrupamento pronto).
 
 ## 10. Gráficos
 

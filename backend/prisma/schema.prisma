@@ -81,8 +81,16 @@ model Setting {
   userId               String   @unique @map("user_id")
   idealTemperature     Decimal  @default(25) @map("ideal_temperature") @db.Decimal(5, 2)
   temperatureTolerance Decimal  @default(2) @map("temperature_tolerance") @db.Decimal(5, 2)
+  // Taxa mínima/máxima de temperatura, opcionais: quando definidas, substituem o
+  // cálculo automático (ideal ± tolerância) daquele lado da faixa — para quem quer um
+  // limite assimétrico ou mais apertado do que a tolerância simétrica permite. Ideal e
+  // tolerância continuam obrigatórios mesmo quando as duas taxas estão definidas.
+  temperatureMin       Decimal? @map("temperature_min") @db.Decimal(5, 2)
+  temperatureMax       Decimal? @map("temperature_max") @db.Decimal(5, 2)
   idealHumidity        Decimal  @default(60) @map("ideal_humidity") @db.Decimal(5, 2)
   humidityTolerance    Decimal  @default(10) @map("humidity_tolerance") @db.Decimal(5, 2)
+  humidityMin          Decimal? @map("humidity_min") @db.Decimal(5, 2)
+  humidityMax          Decimal? @map("humidity_max") @db.Decimal(5, 2)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

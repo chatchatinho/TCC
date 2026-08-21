@@ -14,17 +14,32 @@ async function update(userId, data) {
   });
 }
 
-// Calcula os limites mín/máx a partir do valor ideal e da margem de tolerância.
-// Umidade é sempre confinada a [0, 100] — não faz sentido um limite fora da faixa
-// fisicamente possível, mesmo que ideal ± tolerância matematicamente ultrapasse.
+// Calcula os limites mín/máx a partir do valor ideal e da margem de tolerância. Se o
+// usuário definiu uma taxa mínima/máxima explícita (Setting.temperatureMin/Max,
+// humidityMin/Max), ela substitui o lado correspondente do cálculo — permite uma faixa
+// assimétrica ou mais apertada do que a tolerância simétrica permitiria sozinha. Umidade
+// é sempre confinada a [0, 100] quando calculada automaticamente — não faz sentido um
+// limite fora da faixa fisicamente possível, mesmo que ideal ± tolerância ultrapasse.
 function computeThresholds(settings) {
   const temperature = {
-    min: Number(settings.idealTemperature) - Number(settings.temperatureTolerance),
-    max: Number(settings.idealTemperature) + Number(settings.temperatureTolerance),
+    min:
+      settings.temperatureMin != null
+        ? Number(settings.temperatureMin)
+        : Number(settings.idealTemperature) - Number(settings.temperatureTolerance),
+    max:
+      settings.temperatureMax != null
+        ? Number(settings.temperatureMax)
+        : Number(settings.idealTemperature) + Number(settings.temperatureTolerance),
   };
   const humidity = {
-    min: Math.max(0, Number(settings.idealHumidity) - Number(settings.humidityTolerance)),
-    max: Math.min(100, Number(settings.idealHumidity) + Number(settings.humidityTolerance)),
+    min:
+      settings.humidityMin != null
+        ? Number(settings.humidityMin)
+        : Math.max(0, Number(settings.idealHumidity) - Number(settings.humidityTolerance)),
+    max:
+      settings.humidityMax != null
+        ? Number(settings.humidityMax)
+        : Math.min(100, Number(settings.idealHumidity) + Number(settings.humidityTolerance)),
   };
   return { temperature, humidity };
 }

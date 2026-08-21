@@ -147,3 +147,29 @@ describe('PUT /api/users/me — avatar de perfil', () => {
     expect(res.body.user.id).not.toBe(otherUser.id);
   });
 });
+
+describe('DELETE /api/users/me (excluir conta)', () => {
+  test('exige a senha correta', async () => {
+    const { agent } = await registerAndLogin({ password: 'SenhaAntiga123' });
+
+    const wrong = await agent.delete('/api/users/me').send({ password: 'SenhaErrada000' });
+    expect(wrong.status).toBe(401);
+  });
+
+  test('apaga a conta, o dispositivo e as leituras associadas, e encerra a sessão', async () => {
+    const { agent, id } = await registerAndLogin({ password: 'SenhaAntiga123' });
+    const deviceRes = await agent.post('/api/devices').send({ name: 'Sensor de Teste' });
+    const deviceId = deviceRes.body.device.id;
+
+    const res = await agent.delete('/api/users/me').send({ password: 'SenhaAntiga123' });
+    expect(res.status).toBe(204);
+
+    const prisma = require('../src/lib/prisma');
+    expect(await prisma.user.findUnique({ where: { id } })).toBeNull();
+    expect(await prisma.device.findUnique({ where: { id: deviceId } })).toBeNull();
+
+    // a sessão anterior não deve mais funcionar
+    const me = await agent.get('/api/auth/me');
+    expect(me.status).toBe(401);
+  });
+});

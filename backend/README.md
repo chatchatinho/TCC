@@ -84,10 +84,10 @@ src/
 ├── middlewares/           (auth de usuário, auth de dispositivo, rate limit, validação, erros)
 └── modules/
     ├── auth/               (registro, login, logout, /me)
-    ├── users/               (perfil)
+    ├── users/               (perfil, troca de senha, exclusão de conta)
     ├── devices/             (CRUD de dispositivos ESP32 + rotação de token)
     ├── measurements/        (ingestão do ESP32 + endpoint de simulação)
-    ├── settings/            (temperatura/umidade ideal e tolerância)
+    ├── settings/            (temperatura/umidade ideal e tolerância, mais taxa mín/máx opcional)
     ├── alerts/              (ciclo de vida de alertas, evita spam de notificações)
     └── history/             (consulta paginada + exportação CSV)
 ```

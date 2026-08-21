@@ -122,4 +122,19 @@ async function changePassword(userId, currentPassword, newPassword) {
   await prisma.user.update({ where: { id: userId }, data: { passwordHash } });
 }
 
-module.exports = { register, login, getById, requestPasswordReset, resetPassword, changePassword };
+// Exige a senha atual pelo mesmo motivo de changePassword: uma sessão sozinha (ex.
+// roubada) não deveria bastar para apagar a conta. O delete em cascata (devices,
+// settings, alerts → onDelete: Cascade no schema) cuida de limpar todo o resto.
+async function deleteAccount(userId, password) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) throw new AppError(401, 'Sessão inválida.');
+
+  const isValid = await bcrypt.compare(password, user.passwordHash);
+  if (!isValid) {
+    throw new AppError(401, 'Senha incorreta.');
+  }
+
+  await prisma.user.delete({ where: { id: userId } });
+}
+
+module.exports = { register, login, getById, requestPasswordReset, resetPassword, changePassword, deleteAccount };

@@ -24,4 +24,8 @@ const changePasswordSchema = z.object({
   newPassword: passwordSchema,
 });
 
-module.exports = { updateProfileSchema, changePasswordSchema };
+const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Informe sua senha.'),
+});
+
+module.exports = { updateProfileSchema, changePasswordSchema, deleteAccountSchema };

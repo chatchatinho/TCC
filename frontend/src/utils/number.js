@@ -13,3 +13,9 @@ export function parseDecimal(value) {
 export function isValidDecimal(value) {
   return Number.isFinite(parseDecimal(value));
 }
+
+// Para campos numéricos opcionais: vazio é válido (significa "não definido"),
+// qualquer outra coisa precisa ser um decimal válido.
+export function isValidOptionalDecimal(value) {
+  return value === '' || value == null || isValidDecimal(value);
+}

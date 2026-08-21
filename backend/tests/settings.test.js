@@ -72,3 +72,66 @@ describe('PUT /api/settings', () => {
     expect(res.body.thresholds.humidity).toEqual({ min: 65, max: 100 });
   });
 });
+
+describe('PUT /api/settings — taxa mínima/máxima opcional', () => {
+  test('taxa mínima/máxima definida substitui o cálculo automático daquele lado', async () => {
+    const { agent } = await registerAndLogin();
+
+    const res = await agent.put('/api/settings').send({
+      idealTemperature: 25,
+      temperatureTolerance: 2,
+      temperatureMin: 10,
+      temperatureMax: 30,
+      idealHumidity: 60,
+      humidityTolerance: 10,
+      humidityMin: null,
+      humidityMax: 80,
+    });
+
+    expect(res.status).toBe(200);
+    // ideal ± tolerância daria 23-27, mas a taxa explícita substitui os dois lados.
+    expect(res.body.thresholds.temperature).toEqual({ min: 10, max: 30 });
+    // só o máximo foi sobrescrito; o mínimo continua vindo do cálculo automático (50).
+    expect(res.body.thresholds.humidity).toEqual({ min: 50, max: 80 });
+  });
+
+  test('taxa mínima maior ou igual à máxima é rejeitada com 400', async () => {
+    const { agent } = await registerAndLogin();
+
+    const res = await agent.put('/api/settings').send({
+      idealTemperature: 25,
+      temperatureTolerance: 2,
+      temperatureMin: 30,
+      temperatureMax: 10,
+      idealHumidity: 60,
+      humidityTolerance: 10,
+    });
+
+    expect(res.status).toBe(400);
+  });
+
+  test('enviar null limpa uma taxa definida anteriormente, voltando ao cálculo automático', async () => {
+    const { agent } = await registerAndLogin();
+
+    await agent.put('/api/settings').send({
+      idealTemperature: 25,
+      temperatureTolerance: 2,
+      temperatureMin: 10,
+      temperatureMax: 30,
+      idealHumidity: 60,
+      humidityTolerance: 10,
+    });
+
+    const res = await agent.put('/api/settings').send({
+      idealTemperature: 25,
+      temperatureTolerance: 2,
+      temperatureMin: null,
+      temperatureMax: null,
+      idealHumidity: 60,
+      humidityTolerance: 10,
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.thresholds.temperature).toEqual({ min: 23, max: 27 });
+  });
+});

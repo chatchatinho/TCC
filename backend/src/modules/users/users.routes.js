@@ -2,10 +2,11 @@ const { Router } = require('express');
 const prisma = require('../../lib/prisma');
 const { requireAuth } = require('../../middlewares/auth');
 const { validateBody } = require('../../middlewares/validate');
-const { updateProfileSchema, changePasswordSchema } = require('./users.validation');
+const { updateProfileSchema, changePasswordSchema, deleteAccountSchema } = require('./users.validation');
 const { serializeUser } = require('../../lib/serializers');
 const AppError = require('../../lib/AppError');
 const authService = require('../auth/auth.service');
+const { clearSessionCookie } = require('../../lib/jwt');
 
 const router = Router();
 router.use(requireAuth);
@@ -40,6 +41,18 @@ router.put('/me', validateBody(updateProfileSchema), async (req, res, next) => {
 router.put('/me/password', validateBody(changePasswordSchema), async (req, res, next) => {
   try {
     await authService.changePassword(req.userId, req.body.currentPassword, req.body.newPassword);
+    res.status(204).end();
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Apaga a conta (e, em cascata, seus dispositivos/histórico/alertas/configurações) e
+// encerra a sessão — exige a senha para evitar que uma sessão sozinha baste.
+router.delete('/me', validateBody(deleteAccountSchema), async (req, res, next) => {
+  try {
+    await authService.deleteAccount(req.userId, req.body.password);
+    clearSessionCookie(res);
     res.status(204).end();
   } catch (err) {
     next(err);
