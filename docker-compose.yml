@@ -1,0 +1,57 @@
+# Sobe o sistema inteiro (banco + backend + frontend) com um único comando:
+#   docker compose up --build
+#
+# Depois, acesse http://localhost:5173 no navegador.
+#
+# Os valores abaixo são padrões de DEMONSTRAÇÃO LOCAL (senha simples, JWT_SECRET fixo) —
+# adequados para rodar no seu computador, mas NUNCA para um ambiente exposto à internet.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tcc_dev
+      POSTGRES_PASSWORD: tcc_dev_local_pw
+      POSTGRES_DB: tcc_dev
+    volumes:
+      - tcc_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tcc_dev -d tcc_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Porta do banco não é publicada no host de propósito: só o backend precisa
+    # alcançá-lo, e assim evita conflito com um PostgreSQL que já esteja rodando
+    # localmente na sua máquina fora do Docker.
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://tcc_dev:tcc_dev_local_pw@db:5432/tcc_dev
+      API_PORT: 3000
+      JWT_SECRET: docker-local-demo-secret-troque-em-producao
+      CORS_ORIGIN: http://localhost:5173
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Endereço que o NAVEGADOR usa para falar com a API — precisa ser localhost
+        # (a porta publicada no host), não o nome do serviço "backend" (que só existe
+        # dentro da rede interna do Docker).
+        VITE_API_URL: http://localhost:3000/api
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:5173"
+
+volumes:
+  tcc_postgres_data:

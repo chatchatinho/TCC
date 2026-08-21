@@ -48,7 +48,38 @@ Justificativas detalhadas em [`docs/01-arquitetura-e-decisoes.md`](docs/01-arqui
 
 ## Instalação e execução
 
-### 1. Banco de dados
+Duas formas de rodar o projeto: com Docker (um único pré-requisito) ou instalando
+Node.js e PostgreSQL manualmente. Escolha uma.
+
+### Opção A — Docker (recomendado se você não quer instalar Node.js/PostgreSQL)
+
+Pré-requisito único: [Docker Desktop](https://www.docker.com/products/docker-desktop/).
+
+```bash
+docker compose up --build
+```
+
+Isso sobe o PostgreSQL, o backend (aplicando as migrations automaticamente) e o
+frontend já compilado. Acesse **http://localhost:5173** no navegador.
+
+Os dados do banco persistem entre reinícios (volume Docker), mas o `docker-compose.yml`
+**não** roda o seed automaticamente (rodar o seed toda vez apagaria dados que você
+tiver criado). Para popular com dados de demonstração na primeira vez:
+
+```bash
+docker compose exec backend npm run db:seed
+```
+
+Para parar: `docker compose down` (os dados continuam salvos). Para apagar tudo,
+incluindo o banco: `docker compose down -v`.
+
+> As credenciais usadas pelo `docker-compose.yml` (senha do banco, `JWT_SECRET`) são
+> valores fixos de demonstração local — adequados para rodar na sua máquina, nunca para
+> um ambiente exposto à internet.
+
+### Opção B — Manual (Node.js + PostgreSQL instalados)
+
+#### 1. Banco de dados
 
 ```bash
 sudo -u postgres psql -c "CREATE USER tcc_dev WITH PASSWORD 'sua_senha' CREATEDB;"
@@ -58,7 +89,7 @@ sudo -u postgres psql -c "CREATE DATABASE tcc_dev OWNER tcc_dev;"
 (`CREATEDB` é necessário porque o Prisma cria um banco temporário durante
 `prisma migrate dev` para detectar divergências de schema.)
 
-### 2. Backend
+#### 2. Backend
 
 ```bash
 cd backend
@@ -71,7 +102,7 @@ npm run dev                 # sobe em http://localhost:3000
 
 Detalhes em [`backend/README.md`](backend/README.md).
 
-### 3. Frontend
+#### 3. Frontend
 
 ```bash
 cd frontend
@@ -82,7 +113,7 @@ npm run dev                 # abre em http://localhost:5173
 
 Detalhes em [`frontend/README.md`](frontend/README.md).
 
-### 4. ESP32 (opcional)
+### ESP32 (opcional — funciona com as duas opções acima)
 
 ```bash
 cd esp32/firmware
@@ -168,13 +199,16 @@ motor de alertas (incluindo a lógica anti-spam), configurações e histórico. 
 | ESP32 não conecta ao Wi-Fi | Placa só suporta redes 2.4GHz; confira `WIFI_SSID`/`WIFI_PASSWORD` em `config.h` |
 | API retorna 401 para o ESP32 | `DEVICE_TOKEN`/`DEVICE_ID` incorretos, ou dispositivo desativado — regenere o token na tela Dispositivos |
 | API retorna 429 em testes manuais repetidos | Rate limiting ativo (10 tentativas de login/registro por 15 min) — aguarde ou reinicie o backend em desenvolvimento |
+| `docker compose up` falha ao baixar as imagens | Sem conexão com a internet, ou Docker Desktop não está aberto/rodando |
+| Porta 3000 ou 5173 já em uso (Docker ou manual) | Outro processo já está usando a porta — feche-o, ou troque o mapeamento em `docker-compose.yml` (ex. `"3001:3000"`) |
 
 ## Estrutura do repositório
 
 ```
 TCC/
-├── backend/       API REST (Node/Express + Prisma/PostgreSQL) — ver backend/README.md
-├── frontend/      SPA React — ver frontend/README.md
-├── esp32/         Firmware do ESP32 — ver esp32/README.md
-└── docs/          Documentação técnica do TCC (arquitetura, integração, segurança)
+├── backend/              API REST (Node/Express + Prisma/PostgreSQL) — ver backend/README.md
+├── frontend/              SPA React — ver frontend/README.md
+├── esp32/                 Firmware do ESP32 — ver esp32/README.md
+├── docs/                  Documentação técnica do TCC (arquitetura, integração, segurança)
+└── docker-compose.yml     Sobe banco + backend + frontend com um comando (ver Instalação acima)
 ```
