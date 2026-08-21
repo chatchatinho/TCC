@@ -71,6 +71,13 @@ export default function History() {
     };
   }
 
+  function clearFilters() {
+    setPage(1);
+    setFilters(initialFilters);
+  }
+
+  const activeFilterCount = Object.values(filters).filter((v) => v !== '').length;
+
   function toggleSort(column) {
     setPage(1);
     if (sortBy === column) {
@@ -99,33 +106,67 @@ export default function History() {
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:grid-cols-3 lg:grid-cols-4">
-        <SelectField label="Dispositivo" value={filters.deviceId} onChange={updateFilter('deviceId')}>
-          <option value="">Todos</option>
-          {devices.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name}
-            </option>
-          ))}
-        </SelectField>
-        <Field label="De" type="datetime-local" value={filters.dateFrom} onChange={updateFilter('dateFrom')} />
-        <Field label="Até" type="datetime-local" value={filters.dateTo} onChange={updateFilter('dateTo')} />
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+            Filtros
+            {activeFilterCount > 0 && (
+              <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
+                {activeFilterCount} ativo{activeFilterCount > 1 ? 's' : ''}
+              </span>
+            )}
+          </h2>
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              Limpar filtros
+            </button>
+          )}
+        </div>
 
-        <SelectField label="Situação da temperatura" value={filters.temperatureStatus} onChange={updateFilter('temperatureStatus')}>
-          <option value="">Todas</option>
-          <option value="normal">Normal</option>
-          <option value="out_of_range">Fora do limite</option>
-        </SelectField>
-        <Field label="Temp. mín (°C)" type="number" value={filters.temperatureMin} onChange={updateFilter('temperatureMin')} />
-        <Field label="Temp. máx (°C)" type="number" value={filters.temperatureMax} onChange={updateFilter('temperatureMax')} />
+        <FilterGroup label="Dispositivo e período">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <SelectField label="Dispositivo" value={filters.deviceId} onChange={updateFilter('deviceId')}>
+              <option value="">Todos</option>
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </SelectField>
+            <Field label="De" type="datetime-local" value={filters.dateFrom} onChange={updateFilter('dateFrom')} />
+            <Field label="Até" type="datetime-local" value={filters.dateTo} onChange={updateFilter('dateTo')} />
+          </div>
+        </FilterGroup>
 
-        <SelectField label="Situação da umidade" value={filters.humidityStatus} onChange={updateFilter('humidityStatus')}>
-          <option value="">Todas</option>
-          <option value="normal">Normal</option>
-          <option value="out_of_range">Fora do limite</option>
-        </SelectField>
-        <Field label="Umidade mín (%)" type="number" value={filters.humidityMin} onChange={updateFilter('humidityMin')} />
-        <Field label="Umidade máx (%)" type="number" value={filters.humidityMax} onChange={updateFilter('humidityMax')} />
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <FilterGroup label="Temperatura" accent="blue">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <SelectField label="Situação" value={filters.temperatureStatus} onChange={updateFilter('temperatureStatus')}>
+                <option value="">Todas</option>
+                <option value="normal">Normal</option>
+                <option value="out_of_range">Fora do limite</option>
+              </SelectField>
+              <Field label="Mín (°C)" type="number" value={filters.temperatureMin} onChange={updateFilter('temperatureMin')} />
+              <Field label="Máx (°C)" type="number" value={filters.temperatureMax} onChange={updateFilter('temperatureMax')} />
+            </div>
+          </FilterGroup>
+
+          <FilterGroup label="Umidade" accent="teal">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <SelectField label="Situação" value={filters.humidityStatus} onChange={updateFilter('humidityStatus')}>
+                <option value="">Todas</option>
+                <option value="normal">Normal</option>
+                <option value="out_of_range">Fora do limite</option>
+              </SelectField>
+              <Field label="Mín (%)" type="number" value={filters.humidityMin} onChange={updateFilter('humidityMin')} />
+              <Field label="Máx (%)" type="number" value={filters.humidityMax} onChange={updateFilter('humidityMax')} />
+            </div>
+          </FilterGroup>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -181,6 +222,24 @@ export default function History() {
         <Pagination page={page} pageSize={result.pageSize} total={result.total} onPageChange={setPage} />
       </div>
     </Layout>
+  );
+}
+
+// Agrupa um conjunto de filtros sob um rótulo, com uma barra de cor lateral opcional
+// para reforçar visualmente a associação (ex.: azul = temperatura, verde-azulado =
+// umidade), consistente com as cores usadas nos gráficos do Dashboard.
+const GROUP_ACCENTS = {
+  blue: 'border-l-blue-400 dark:border-l-blue-500',
+  teal: 'border-l-teal-400 dark:border-l-teal-500',
+  none: 'border-l-transparent',
+};
+
+function FilterGroup({ label, accent = 'none', children }) {
+  return (
+    <div className={`border-l-2 pl-3 ${GROUP_ACCENTS[accent]}`}>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">{label}</p>
+      {children}
+    </div>
   );
 }
 
