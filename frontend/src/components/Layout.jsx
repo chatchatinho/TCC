@@ -1,6 +1,8 @@
-import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import * as alertsService from '../services/alerts';
+import NotificationBadge from './NotificationBadge';
 
 const NAV_ITEMS = [
   { to: '/dashboard', label: 'Dashboard', icon: '📊' },
@@ -11,10 +13,36 @@ const NAV_ITEMS = [
   { to: '/profile', label: 'Perfil', icon: '👤' },
 ];
 
+const POLL_INTERVAL_MS = 10_000;
+
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Contagem para a bolinha do item "Notificações" — em polling porque o menu fica
+  // montado em toda página, sem acesso direto ao estado de quem dispara os alertas
+  // (ex.: a simulação automática do Dashboard). Refaz também ao trocar de rota, para
+  // refletir rápido quando a tela de notificações acabou de marcar tudo como lido.
+  useEffect(() => {
+    let cancelled = false;
+    function load() {
+      alertsService
+        .getAlertsSummary()
+        .then((s) => {
+          if (!cancelled) setUnreadCount(s.unreadCount);
+        })
+        .catch(() => {});
+    }
+    load();
+    const interval = setInterval(load, POLL_INTERVAL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [location.pathname]);
 
   async function handleLogout() {
     await logout();
@@ -56,6 +84,7 @@ export default function Layout({ children }) {
             <NavLink key={item.to} to={item.to} className={navLinkClass} onClick={() => setMobileOpen(false)}>
               <span>{item.icon}</span>
               {item.label}
+              {item.to === '/notifications' && <NotificationBadge count={unreadCount} className="ml-auto" />}
             </NavLink>
           ))}
         </nav>

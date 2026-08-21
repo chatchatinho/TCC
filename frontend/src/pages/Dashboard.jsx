@@ -3,10 +3,12 @@ import { Link } from 'react-router-dom';
 import * as measurementsService from '../services/measurements';
 import * as historyService from '../services/history';
 import * as settingsService from '../services/settings';
+import * as alertsService from '../services/alerts';
 import Layout from '../components/Layout';
 import MetricCard from '../components/MetricCard';
 import LineChart from '../components/LineChart';
 import AlertsBanner from '../components/AlertsBanner';
+import NotificationBadge from '../components/NotificationBadge';
 import { PERIOD_OPTIONS, computeRange } from '../utils/periods';
 import { formatDateTime, formatNumber, formatTime } from '../utils/format';
 import { getDeviceStatus } from '../utils/deviceStatus';
@@ -62,16 +64,35 @@ export default function Dashboard() {
   const [chartData, setChartData] = useState({ labels: [], temperature: [], humidity: [] });
   const [alertsRefreshKey, setAlertsRefreshKey] = useState(0);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
+  const [deviceAlertCounts, setDeviceAlertCounts] = useState({});
   const simulatingRef = useRef(false);
+  const latestRef = useRef([]);
 
   const loadLatest = useCallback(async () => {
     try {
       const data = await measurementsService.getLatest();
       setLatest(data);
+      latestRef.current = data;
     } finally {
       setLoading(false);
     }
   }, []);
+
+  // Notificações pendentes por dispositivo, para a bolinha ao lado de cada um no
+  // resumo dos outros dispositivos. Reaproveita a mesma contagem de "não lidas" do
+  // sino do menu, só que quebrada por device_id.
+  useEffect(() => {
+    alertsService
+      .listAlerts({ pageSize: 100 })
+      .then(({ alerts }) => {
+        const counts = {};
+        for (const alert of alerts) {
+          if (!alert.readAt) counts[alert.deviceId] = (counts[alert.deviceId] ?? 0) + 1;
+        }
+        setDeviceAlertCounts(counts);
+      })
+      .catch(() => {});
+  }, [alertsRefreshKey]);
 
   // Enquanto o usuário não escolher um dispositivo (ou se o escolhido tiver sido
   // removido), cai no primeiro da lista — mesmo comportamento de antes para quem só
@@ -112,27 +133,36 @@ export default function Dashboard() {
     [primary],
   );
 
-  // Simulação automática (sem botão): a cada 2s, se nenhum ESP32 físico tiver mandado
-  // uma leitura real recentemente para este dispositivo, gera uma leitura simulada
-  // relativa aos limites configurados pelo usuário. Some completamente assim que o
-  // hardware real começa a enviar dados (ver `lastRealMeasurementAt`).
-  const deviceId = primary?.device?.id;
-  const lastRealMeasurementAt = primary?.device?.lastRealMeasurementAt;
-
+  // Simulação automática (sem botão): a cada 2s, gera uma leitura para CADA dispositivo
+  // "virtual" do usuário — não só o que está selecionado no momento — para que os outros
+  // continuem "vivos" em segundo plano (cards de resumo, alertas) mesmo sem o usuário
+  // estar olhando para eles. Um dispositivo só fica de fora da rodada se um ESP32 físico
+  // tiver mandado uma leitura real recentemente (ver `lastRealMeasurementAt`); nesse
+  // caso, ele passa a ser tratado como hardware real e a simulação o ignora por completo.
+  // Lê a lista de dispositivos de uma ref (em vez de depender de `latest` diretamente)
+  // para o intervalo não precisar ser recriado a cada leitura simulada.
   useEffect(() => {
-    if (!deviceId) return undefined;
-
-    const usingRealHardware =
-      lastRealMeasurementAt && Date.now() - new Date(lastRealMeasurementAt).getTime() < REAL_HARDWARE_GRACE_MS;
-    if (usingRealHardware) return undefined;
-
     const interval = setInterval(async () => {
       if (simulatingRef.current) return;
+      const devices = latestRef.current;
+      if (devices.length === 0) return;
+
+      const virtualDevices = devices.filter((item) => {
+        const lastReal = item.device.lastRealMeasurementAt;
+        const usingRealHardware = lastReal && Date.now() - new Date(lastReal).getTime() < REAL_HARDWARE_GRACE_MS;
+        return !usingRealHardware;
+      });
+      if (virtualDevices.length === 0) return;
+
       simulatingRef.current = true;
       try {
         const { thresholds } = await settingsService.getSettings();
-        const reading = buildSimulatedReading(thresholds);
-        await measurementsService.simulateMeasurement({ deviceId, ...reading });
+        await Promise.all(
+          virtualDevices.map((item) => {
+            const reading = buildSimulatedReading(thresholds);
+            return measurementsService.simulateMeasurement({ deviceId: item.device.id, ...reading });
+          }),
+        );
         await Promise.all([loadLatest(), loadChart()]);
         setAlertsRefreshKey((k) => k + 1);
       } finally {
@@ -141,7 +171,7 @@ export default function Dashboard() {
     }, AUTO_SIM_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [deviceId, lastRealMeasurementAt, loadLatest, loadChart]);
+  }, [loadLatest, loadChart]);
 
   if (loading) {
     return (
@@ -192,7 +222,11 @@ export default function Dashboard() {
         {otherDevices.length > 0 && (
           <div className="space-y-0.5 text-right text-xs text-slate-600 dark:text-slate-300">
             {otherDevices.map((item) => (
-              <OtherDeviceSummary key={item.device.id} item={item} />
+              <OtherDeviceSummary
+                key={item.device.id}
+                item={item}
+                alertCount={deviceAlertCounts[item.device.id] ?? 0}
+              />
             ))}
           </div>
         )}
@@ -265,8 +299,9 @@ export default function Dashboard() {
 
 // Linha compacta e somente-informativa (a troca de dispositivo acontece no seletor
 // abaixo de "Dashboard") com a temperatura atual de um dispositivo que não é o
-// exibido no momento: "Nome → valor °C status".
-function OtherDeviceSummary({ item }) {
+// exibido no momento: "Nome → valor °C status 🔴N" (a bolinha só aparece se houver
+// notificação pendente daquele dispositivo).
+function OtherDeviceSummary({ item, alertCount }) {
   const status = getDeviceStatus(item.device.lastSeenAt);
   return (
     <p>
@@ -274,6 +309,7 @@ function OtherDeviceSummary({ item }) {
       <span className="mx-1 text-slate-400 dark:text-slate-500">→</span>
       <span>{item.measurement ? `${formatNumber(item.measurement.temperature)} °C` : 'sem leitura'}</span>
       <span className="ml-1">{status.dot}</span>
+      <NotificationBadge count={alertCount} className="ml-1 align-middle" />
     </p>
   );
 }

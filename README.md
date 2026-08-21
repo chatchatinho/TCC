@@ -37,8 +37,10 @@ Documentação completa em [`docs/`](docs/):
   filtros (dispositivo, período, faixa de valores, situação de temperatura e de
   umidade separadamente) e exportação CSV
 - Gerenciamento de dispositivos ESP32 (token de API com hash, nunca em texto puro)
-- Simulação automática de leituras (a cada 2s, proporção 100:5 normal:fora do limite) —
-  demonstra o sistema completo sem o hardware físico, e se desliga sozinha assim que um
+- Simulação automática de leituras (a cada 2s, proporção 100:5 normal:fora do limite),
+  para todos os dispositivos "virtuais" do usuário mesmo em segundo plano (não só o
+  selecionado no Dashboard) — demonstra o sistema completo sem o hardware físico, e se
+  desliga sozinha, dispositivo por dispositivo, assim que um
   ESP32 real começa a enviar leituras de verdade
 - Firmware ESP32 (DHT11) pronto para uso, com Wi-Fi, NTP, reconexão e autenticação
 
@@ -139,11 +141,13 @@ Cadastre o dispositivo na tela "Dispositivos" do sistema web primeiro, para obte
 `device_id` e o token. Depois abra `firmware.ino` no Arduino IDE e envie para a placa.
 Fiação, bibliotecas e troubleshooting em [`esp32/README.md`](esp32/README.md).
 
-**Sem o hardware em mãos?** Não precisa fazer nada: o Dashboard já gera leituras simuladas
-sozinho, automaticamente, a cada 2 segundos (proporção 100:5 de leituras normais para leituras
-fora do limite) — cobre a demonstração completa (dashboard, gráficos, alertas, histórico) sem
-precisar do ESP32 físico. Assim que um ESP32 físico real começar a enviar leituras de verdade
-para o mesmo dispositivo, a simulação automática é completamente desligada.
+**Sem o hardware em mãos?** Não precisa fazer nada: leituras simuladas são geradas
+automaticamente, a cada 2 segundos, para todos os dispositivos cadastrados (mesmo os que não
+estão selecionados no Dashboard no momento), com proporção 100:5 de leituras normais para
+leituras fora do limite — cobre a demonstração completa (dashboard, gráficos, alertas,
+histórico) sem precisar do ESP32 físico. Assim que um ESP32 físico real começar a enviar
+leituras de verdade para um desses dispositivos, a simulação automática dele é
+completamente desligada (os demais continuam simulando normalmente).
 
 ## Variáveis de ambiente
 

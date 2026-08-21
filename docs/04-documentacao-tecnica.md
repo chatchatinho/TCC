@@ -231,12 +231,16 @@ stateDiagram-v2
 
 Ao logar, o frontend consulta `GET /api/alerts/summary` (conta alertas com
 `read_at IS NULL`, ativos ou já resolvidos) e mostra um banner "Você possui N
-notificações desde seu último acesso" no Dashboard. O banner é só o aviso — a revisão
-em si acontece na tela dedicada `/notifications` (menu "Notificações"), que lista os
-detalhes de cada anomalia (variável, pico, limites, início/fim) e, ao ser aberta, chama
-`PATCH /api/alerts/:id/read` para cada notificação ainda não lida. Ou seja, o simples
-ato de abrir a tela já "confere" as notificações: elas somem do banner e da própria
-tela a partir da próxima visita, até a próxima anomalia.
+notificações desde seu último acesso" no Dashboard, além de uma bolinha vermelha com
+essa contagem ao lado de "Notificações" no menu lateral (`Layout.jsx`, em polling a
+cada 10s). O banner é só o aviso — a revisão em si acontece na tela dedicada
+`/notifications` (menu "Notificações"), que lista os detalhes de cada anomalia
+(variável, pico, limites, início/fim) e, ao ser aberta, chama `PATCH /api/alerts/:id/read`
+para cada notificação ainda não lida. Ou seja, o simples ato de abrir a tela já "confere"
+as notificações: elas somem do banner, da bolinha do menu e da própria tela a partir da
+próxima visita, até a próxima anomalia. No resumo de outros dispositivos do Dashboard,
+a mesma bolinha aparece ao lado de cada dispositivo com notificação pendente, com a
+contagem quebrada por `device_id` (`GET /api/alerts` filtrado no cliente).
 
 ## 10. Gráficos
 
