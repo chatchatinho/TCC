@@ -65,12 +65,12 @@ Se ainda não tiver o projeto no computador, veja o
 [`05-guia-teste-iniciante.md`](05-guia-teste-iniciante.md) primeiro. Se já tiver:
 
 ```powershell
-cd $env:USERPROFILE\Desktop\TCC
+cd $env:USERPROFILE\Desktop\Software
 git pull
 ```
 
 No Arduino IDE: **File → Open** → navegue até
-`Desktop\TCC\esp32\firmware\firmware.ino` e abra.
+`Desktop\Software\esp32\firmware\firmware.ino` e abra.
 
 ## 7. Configurar o `config.h`
 

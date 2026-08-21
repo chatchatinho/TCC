@@ -61,12 +61,14 @@ Ainda no terminal do VS Code:
 
 ```powershell
 cd $env:USERPROFILE\Desktop
-git clone https://github.com/chatchatinho/TCC.git
-cd TCC
+git clone https://github.com/chatchatinho/TCC.git Software
+cd Software
 git checkout claude/esp32-temp-humidity-monitoring-k1kgji
 ```
 
-Agora abra a pasta no VS Code: **File → Open Folder** → selecione `Desktop\TCC`.
+*(O repositório no GitHub pode continuar se chamando `TCC` — o `Software` no fim do comando `git clone` só define o nome da pasta local, que é o que importa aqui. Se você renomeou o repositório no GitHub também, troque a URL por `https://github.com/chatchatinho/Software.git`.)*
+
+Agora abra a pasta no VS Code: **File → Open Folder** → selecione `Desktop\Software`.
 
 ## 7. Criar o banco de dados do projeto
 
@@ -102,7 +104,7 @@ CREATE DATABASE tcc_dev OWNER tcc_dev;
 De volta ao terminal do VS Code:
 
 ```powershell
-cd $env:USERPROFILE\Desktop\TCC\backend
+cd $env:USERPROFILE\Desktop\Software\backend
 copy .env.example .env
 ```
 
@@ -148,7 +150,7 @@ No VS Code, clique no ícone **`+`** no painel do terminal para abrir uma **segu
 aba de terminal** (sem fechar a primeira):
 
 ```powershell
-cd $env:USERPROFILE\Desktop\TCC\frontend
+cd $env:USERPROFILE\Desktop\Software\frontend
 copy .env.example .env
 npm install
 npm run dev
