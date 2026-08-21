@@ -1,0 +1,120 @@
+// Schema do banco de dados do TCC — Sistema de Monitoramento de Temperatura e Umidade
+// Decisões de modelagem completas em docs/01-arquitetura-e-decisoes.md
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  fullName     String   @map("full_name")
+  // E-mail é normalizado para minúsculas na camada de aplicação antes de gravar/consultar,
+  // já que o Prisma não expõe o tipo `citext` nativamente.
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  birthDate    DateTime @map("birth_date") @db.Date
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  devices  Device[]
+  settings Setting?
+  alerts   Alert[]
+
+  @@map("users")
+}
+
+model Device {
+  id               String    @id @default(uuid())
+  deviceIdentifier String    @unique @map("device_identifier")
+  name             String
+  // Hash (bcrypt) do token do dispositivo — nunca armazenado em texto puro.
+  deviceSecretHash String    @map("device_secret_hash")
+  userId           String    @map("user_id")
+  active           Boolean   @default(true)
+  lastSeenAt       DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  measurements Measurement[]
+  alerts       Alert[]
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model Measurement {
+  id          String   @id @default(uuid())
+  deviceId    String   @map("device_id")
+  temperature Decimal  @db.Decimal(5, 2)
+  humidity    Decimal  @db.Decimal(5, 2)
+  measuredAt  DateTime @map("measured_at") @db.Timestamptz(3)
+  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+
+  device Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  alerts Alert[]
+
+  // Índice essencial para consultas de histórico/gráfico (filtro por dispositivo + período).
+  @@index([deviceId, measuredAt(sort: Desc)])
+  @@map("measurements")
+}
+
+model Setting {
+  id                   String   @id @default(uuid())
+  userId               String   @unique @map("user_id")
+  idealTemperature     Decimal  @default(25) @map("ideal_temperature") @db.Decimal(5, 2)
+  temperatureTolerance Decimal  @default(2) @map("temperature_tolerance") @db.Decimal(5, 2)
+  idealHumidity        Decimal  @default(60) @map("ideal_humidity") @db.Decimal(5, 2)
+  humidityTolerance    Decimal  @default(10) @map("humidity_tolerance") @db.Decimal(5, 2)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
+
+enum AlertVariable {
+  temperature
+  humidity
+}
+
+enum AlertDirection {
+  above_max
+  below_min
+}
+
+enum AlertStatus {
+  active
+  resolved
+}
+
+model Alert {
+  id                      String         @id @default(uuid())
+  userId                  String         @map("user_id")
+  deviceId                String         @map("device_id")
+  variable                AlertVariable
+  direction               AlertDirection
+  triggeringMeasurementId String?        @map("triggering_measurement_id")
+  peakValue               Decimal        @map("peak_value") @db.Decimal(5, 2)
+  limitMin                Decimal        @map("limit_min") @db.Decimal(5, 2)
+  limitMax                Decimal        @map("limit_max") @db.Decimal(5, 2)
+  startedAt               DateTime       @map("started_at") @db.Timestamptz(3)
+  endedAt                 DateTime?      @map("ended_at") @db.Timestamptz(3)
+  status                  AlertStatus    @default(active)
+  readAt                  DateTime?      @map("read_at") @db.Timestamptz(3)
+  createdAt               DateTime       @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  user                  User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device                Device       @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  triggeringMeasurement Measurement? @relation(fields: [triggeringMeasurementId], references: [id], onDelete: SetNull)
+
+  // Usado para achar rapidamente o alerta ativo de um dispositivo/variável e para
+  // contar alertas não lidos de um usuário desde o último acesso.
+  @@index([userId, status])
+  @@index([deviceId, status])
+  @@map("alerts")
+}
