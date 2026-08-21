@@ -29,7 +29,10 @@ Documentação completa em [`docs/`](docs/):
 - Configuração de valores ideais e margens de tolerância de temperatura/umidade
 - Detecção automática de leituras fora do limite, com alertas modelados como eventos
   (evita notificação repetida para várias leituras seguidas fora da faixa)
-- Notificação "você possui N alertas desde seu último acesso" ao logar novamente
+- Tela dedicada de notificações (menu "Notificações") para as anomalias de
+  temperatura/umidade desde o último acesso — avisadas também por um banner no
+  Dashboard, que leva direto para lá. Abrir a tela já conta como "conferir": as
+  notificações somem dali para frente, até a próxima anomalia
 - Histórico com ordenação (data, temperatura ou umidade, crescente/decrescente),
   filtros (dispositivo, período, faixa de valores, situação de temperatura e de
   umidade separadamente) e exportação CSV

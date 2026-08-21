@@ -52,8 +52,9 @@ já testado.
    placa.
 6. Cobrir o sensor com a mão (ou soprar nele) para forçar temperatura/umidade fora do
    limite configurado — confirmar que o alerta aparece no dashboard e, ao deslogar e
-   logar novamente, a notificação "Você possui N alertas desde seu último acesso"
-   aparece.
+   logar novamente, o banner "Você possui N notificações desde seu último acesso"
+   aparece; clicar nele leva à tela dedicada `/notifications`, que marca as
+   notificações como lidas ao ser aberta (o banner some daí em diante).
 
 ## Fluxo completo demonstrável (seção 49 do escopo)
 

@@ -230,9 +230,13 @@ stateDiagram-v2
 ```
 
 Ao logar, o frontend consulta `GET /api/alerts/summary` (conta alertas com
-`read_at IS NULL`, ativos ou já resolvidos) e mostra "Você possui N alertas desde seu
-último acesso"; abrir a lista permite ver os detalhes (variável, pico, limites,
-início/fim) e marcar como lido.
+`read_at IS NULL`, ativos ou já resolvidos) e mostra um banner "Você possui N
+notificações desde seu último acesso" no Dashboard. O banner é só o aviso — a revisão
+em si acontece na tela dedicada `/notifications` (menu "Notificações"), que lista os
+detalhes de cada anomalia (variável, pico, limites, início/fim) e, ao ser aberta, chama
+`PATCH /api/alerts/:id/read` para cada notificação ainda não lida. Ou seja, o simples
+ato de abrir a tela já "confere" as notificações: elas somem do banner e da própria
+tela a partir da próxima visita, até a próxima anomalia.
 
 ## 10. Gráficos
 

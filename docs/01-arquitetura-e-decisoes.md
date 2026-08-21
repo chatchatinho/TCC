@@ -237,7 +237,7 @@ A cada nova medição gravada, o backend calcula se ela está dentro do interval
 - **Fora do limite** e **não existe** alerta `active` para aquele `device_id` + `variable` → cria um novo alerta (`started_at = measured_at`, `status='active'`).
 - **Fora do limite** e **já existe** alerta `active` → apenas atualiza `peak_value` se a nova leitura for mais extrema; não cria linha nova.
 
-Isso produz **um evento por ocorrência real**, com duração calculável (`ended_at - started_at`), em vez de um alerta por leitura. Ao logar novamente, o frontend chama `GET /api/alerts/summary` e mostra "Você possui N alertas desde seu último acesso" (definido como alertas com `read_at IS NULL`, sejam eles já resolvidos ou ainda ativos); ao abrir a lista, `PATCH /api/alerts/:id/read` marca como lido.
+Isso produz **um evento por ocorrência real**, com duração calculável (`ended_at - started_at`), em vez de um alerta por leitura. Ao logar novamente, o frontend chama `GET /api/alerts/summary` e mostra um banner "Você possui N notificações desde seu último acesso" no Dashboard (definido como alertas com `read_at IS NULL`, sejam eles já resolvidos ou ainda ativos), que leva à tela dedicada `/notifications`; abrir essa tela já conta como conferir as notificações — `PATCH /api/alerts/:id/read` é chamado para cada uma, e elas somem do banner/tela a partir daí.
 
 ---
 
