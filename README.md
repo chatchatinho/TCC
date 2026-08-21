@@ -17,14 +17,22 @@ Documentação completa em [`docs/`](docs/):
 ## Funcionalidades
 
 - Cadastro e login de usuários (senha com hash bcrypt, sessão via JWT em cookie `httpOnly`)
+- Troca de senha exigindo a senha atual, e recuperação de senha por e-mail ("esqueci
+  minha senha" com token de reset expirando em 1h). Sem SMTP configurado, roda em
+  **modo simulação**: nenhum e-mail é enviado de verdade, o link de redefinição é
+  impresso no console do backend — suficiente para demonstrar o fluxo completo
+  sem depender de credenciais nem de acesso à internet.
+- Foto de perfil opcional
+- Modo escuro e cor de destaque personalizável, em Configurações
 - Dashboard com temperatura/umidade atuais, status do dispositivo (online/sem
   comunicação/offline) e gráficos de linha com filtro de período
 - Configuração de valores ideais e margens de tolerância de temperatura/umidade
 - Detecção automática de leituras fora do limite, com alertas modelados como eventos
   (evita notificação repetida para várias leituras seguidas fora da faixa)
 - Notificação "você possui N alertas desde seu último acesso" ao logar novamente
-- Histórico paginado com filtros (dispositivo, período, faixa de valores, status) e
-  exportação CSV
+- Histórico com ordenação (data, temperatura ou umidade, crescente/decrescente),
+  filtros (dispositivo, período, faixa de valores, situação de temperatura e de
+  umidade separadamente) e exportação CSV
 - Gerenciamento de dispositivos ESP32 (token de API com hash, nunca em texto puro)
 - Endpoint de simulação de leituras — demonstra o sistema completo sem o hardware físico
 - Firmware ESP32 (DHT11) pronto para uso, com Wi-Fi, NTP, reconexão e autenticação
@@ -138,6 +146,8 @@ completa (dashboard, gráficos, alertas, histórico) sem precisar do ESP32 físi
 | `API_PORT` | `backend/.env` | Porta da API (padrão 3000) |
 | `JWT_SECRET` | `backend/.env` | Segredo para assinar os JWTs de sessão — gere um valor aleatório longo |
 | `CORS_ORIGIN` | `backend/.env` | URL do frontend autorizada a fazer requisições com cookies |
+| `FRONTEND_URL` | `backend/.env` | URL usada para montar o link de redefinição de senha |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS`/`SMTP_FROM` | `backend/.env` | Opcionais — deixe em branco para "esqueci minha senha" rodar em modo simulação (link só no console) |
 | `VITE_API_URL` | `frontend/.env` | URL base da API que o frontend consome |
 
 Nenhum valor real fica commitado — apenas os arquivos `.env.example` correspondentes.

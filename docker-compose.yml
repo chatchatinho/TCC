@@ -37,10 +37,10 @@ services:
       JWT_SECRET: docker-local-demo-secret-troque-em-producao
       CORS_ORIGIN: http://localhost:5173
       FRONTEND_URL: http://localhost:5173
-      # SMTP_HOST fica vazio de propósito: sem credenciais reais, o backend usa uma
-      # conta de teste Ethereal automaticamente para "esqueci minha senha" (a URL de
-      # pré-visualização do e-mail aparece no log do container). Para enviar e-mails de
-      # verdade, defina SMTP_HOST/SMTP_USER/SMTP_PASS aqui.
+      # SMTP_HOST fica vazio de propósito: "esqueci minha senha" roda em modo
+      # simulação (o link de redefinição só é impresso no log do container, nenhum
+      # e-mail real é enviado). Para enviar e-mails de verdade no futuro, defina
+      # SMTP_HOST/SMTP_USER/SMTP_PASS aqui.
     ports:
       - "3000:3000"
 
