@@ -50,6 +50,10 @@ async function login({ email, password }) {
     throw new AppError(401, INVALID_CREDENTIALS_MESSAGE);
   }
 
+  // Grava a hora deste login para a próxima vez, mas devolve o usuário como estava
+  // ANTES dessa gravação — assim "Último login" na tela de Perfil mostra o acesso
+  // anterior, não o desta própria sessão que está começando agora.
+  await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   return user;
 }
 

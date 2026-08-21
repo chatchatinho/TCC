@@ -93,6 +93,24 @@ describe('POST /api/auth/login', () => {
     expect(wrongEmail.status).toBe(401);
     expect(wrongEmail.body.error).toBe(wrongPassword.body.error);
   });
+
+  test('lastLoginAt mostra o login ANTERIOR, não o desta própria sessão', async () => {
+    // Primeiro login: acabou de se cadastrar, nunca logou antes -> null.
+    const first = await request(app)
+      .post('/api/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+    expect(first.body.user.lastLoginAt).toBeNull();
+
+    // Segundo login: deve mostrar QUANDO foi o primeiro login, não o de agora.
+    const second = await request(app)
+      .post('/api/auth/login')
+      .send({ email: validUser.email, password: validUser.password });
+    expect(second.body.user.lastLoginAt).not.toBeNull();
+
+    // Terceiro login (via /me com a sessão do segundo) já reflete o login anterior salvo.
+    const meRes = await request(app).get('/api/auth/me').set('Cookie', second.headers['set-cookie']);
+    expect(meRes.body.user.lastLoginAt).not.toBeNull();
+  });
 });
 
 describe('GET /api/auth/me', () => {

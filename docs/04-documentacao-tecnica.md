@@ -214,6 +214,10 @@ sequenceDiagram
   permitir enumeração de contas.
 - Toda rota privada usa `req.userId` (do token) para filtrar dados — nunca confia num
   `userId` vindo do corpo/query da requisição.
+- `User.lastLoginAt`: gravado a cada login bem-sucedido, mas o valor devolvido na
+  resposta desse mesmo login é o de ANTES da gravação (o acesso anterior, não o desta
+  sessão que está começando) — mostrado em Perfil → Segurança como sinal de conta
+  comprometida, mesmo princípio do "last login" do Gmail/GitHub.
 
 ## 9. Sistema de alertas
 
@@ -236,6 +240,14 @@ Configurações → Valores (`Setting.temperatureMin/Max`, `humidityMin/Max`, co
 nullable) — quando definida, ela substitui aquele lado do cálculo automático,
 independentemente do outro lado. Ideal e tolerância continuam obrigatórios mesmo com as
 taxas definidas (servem de base para o lado não sobrescrito).
+
+Cada variável também tem um interruptor independente em Configurações → Valores
+(`Setting.notifyTemperature`/`notifyHumidity`, padrão `true`): quando desligado,
+`alertsService.evaluateMeasurement()` para de abrir novos alertas para aquela variável
+(o status "fora do limite" continua aparecendo normalmente no dashboard/histórico — só
+a geração de notificação é que é pulada). Um alerta que já estava ativo quando a
+notificação foi desligada ainda se resolve normalmente quando a leitura volta ao
+normal, para não ficar preso em aberto para sempre.
 
 Ao logar, o frontend consulta `GET /api/alerts/summary` (conta alertas com
 `read_at IS NULL`, ativos ou já resolvidos) e mostra um banner "Você possui N

@@ -17,23 +17,27 @@ Documentação completa em [`docs/`](docs/):
 ## Funcionalidades
 
 - Cadastro e login de usuários (senha com hash bcrypt, sessão via JWT em cookie `httpOnly`)
-- Perfil dividido em "Dados" (nome, foto, e-mail/data de nascimento somente leitura) e
-  "Segurança" (troca de senha exigindo a senha atual, exclusão de conta com confirmação
-  por senha — some em cascata com dispositivos, histórico, alertas e configurações)
+- Perfil dividido em "Dados" (nome, foto, e-mail/data de nascimento somente leitura,
+  botão para baixar uma cópia de todos os seus dados em JSON) e "Segurança" (data do
+  último login, troca de senha exigindo a senha atual, exclusão de conta com
+  confirmação por senha — some em cascata com dispositivos, histórico, alertas e
+  configurações)
 - Recuperação de senha por e-mail ("esqueci minha senha" com token de reset expirando em
   1h). Sem SMTP configurado, roda em **modo simulação**: nenhum e-mail é enviado de
   verdade, o link de redefinição é impresso no console do backend — suficiente para
   demonstrar o fluxo completo sem depender de credenciais nem de acesso à internet.
 - Foto de perfil opcional
 - Modo escuro que segue automaticamente o tema do sistema operacional até o usuário
-  escolher manualmente em Configurações (com opção de voltar a seguir o sistema), e cor
-  de destaque personalizável
+  escolher manualmente em Configurações (com opção de voltar a seguir o sistema); 8
+  cores de destaque, 3 tamanhos de fonte e opção de reduzir animações/transições
 - Dashboard com temperatura/umidade atuais, status do dispositivo (online/sem
   comunicação/offline), gráficos de linha com filtro de período, seletor de dispositivo
   (quando há mais de um) e um resumo compacto dos demais dispositivos no canto
 - Configurações divididas em "Valores" (ideal e tolerância obrigatórios por variável,
   mais uma taxa mínima/máxima opcional que substitui o cálculo automático quando
-  definida, com botão de restaurar padrões) e "Aparência" (tema, cor de destaque)
+  definida, botão de restaurar padrões, e um interruptor por variável para desligar
+  notificações daquele tipo de anomalia sem deixar de exibir o status no
+  dashboard/histórico) e "Aparência" (tema, cor de destaque, fonte, movimento)
 - Detecção automática de leituras fora do limite, com alertas modelados como eventos
   (evita notificação repetida para várias leituras seguidas fora da faixa)
 - Tela dedicada de notificações (menu "Notificações"), separadas por dispositivo em
@@ -42,9 +46,11 @@ Documentação completa em [`docs/`](docs/):
   registradas permanentemente (não somem); só a bolinha de "não vista" desaparece, e
   isso só acontece quando o usuário expande aquela notificação específica para ver os
   detalhes — abrir a tela ou trocar de aba não marca nada como lido sozinho
-- Histórico com ordenação (data, temperatura ou umidade, crescente/decrescente),
-  filtros agrupados por dispositivo/período, temperatura e umidade (faixa de valores e
-  situação separadas) e exportação CSV
+- Histórico com ordenação (data, temperatura ou umidade, crescente/decrescente), painel
+  de filtros colapsável com atalhos de período (mesmos presets do Dashboard) e campos
+  numéricos com pequeno atraso antes de buscar (evita recarregar a cada dígito
+  digitado), agrupados por dispositivo/período, temperatura e umidade (faixa de valores
+  e situação separadas), e exportação CSV
 - Gerenciamento de dispositivos ESP32 (token de API com hash, nunca em texto puro)
 - Simulação automática de leituras (a cada 2s, proporção 100:5 normal:fora do limite),
   para todos os dispositivos "virtuais" do usuário mesmo em segundo plano (não só o

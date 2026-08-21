@@ -9,6 +9,16 @@ const ACCENT_OPTIONS = [
   { key: 'emerald', label: 'Verde', swatch: '#059669' },
   { key: 'violet', label: 'Roxo', swatch: '#7c3aed' },
   { key: 'orange', label: 'Laranja', swatch: '#ea580c' },
+  { key: 'rose', label: 'Rosa', swatch: '#e11d48' },
+  { key: 'cyan', label: 'Ciano', swatch: '#0891b2' },
+  { key: 'amber', label: 'Âmbar', swatch: '#d97706' },
+  { key: 'slate', label: 'Cinza', swatch: '#475569' },
+];
+
+const FONT_SCALE_OPTIONS = [
+  { key: 'sm', label: 'Pequena' },
+  { key: 'md', label: 'Média' },
+  { key: 'lg', label: 'Grande' },
 ];
 
 const REQUIRED_FIELDS = ['idealTemperature', 'temperatureTolerance', 'idealHumidity', 'humidityTolerance'];
@@ -19,10 +29,12 @@ const DEFAULT_FORM = {
   temperatureTolerance: '2',
   temperatureMin: '',
   temperatureMax: '',
+  notifyTemperature: true,
   idealHumidity: '60',
   humidityTolerance: '10',
   humidityMin: '',
   humidityMax: '',
+  notifyHumidity: true,
 };
 
 const TABS = [
@@ -51,7 +63,18 @@ export default function Settings() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { darkMode, toggleDarkMode, followsSystem, followSystemTheme, accent, setAccent } = useTheme();
+  const {
+    darkMode,
+    toggleDarkMode,
+    followsSystem,
+    followSystemTheme,
+    accent,
+    setAccent,
+    fontScale,
+    setFontScale,
+    reducedMotion,
+    toggleReducedMotion,
+  } = useTheme();
 
   useEffect(() => {
     settingsService.getSettings().then(({ settings }) => {
@@ -60,16 +83,22 @@ export default function Settings() {
         temperatureTolerance: toFormString(settings.temperatureTolerance),
         temperatureMin: toFormString(settings.temperatureMin),
         temperatureMax: toFormString(settings.temperatureMax),
+        notifyTemperature: settings.notifyTemperature,
         idealHumidity: toFormString(settings.idealHumidity),
         humidityTolerance: toFormString(settings.humidityTolerance),
         humidityMin: toFormString(settings.humidityMin),
         humidityMax: toFormString(settings.humidityMax),
+        notifyHumidity: settings.notifyHumidity,
       });
     });
   }, []);
 
   function update(field) {
     return (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
+  }
+
+  function updateCheckbox(field) {
+    return (e) => setForm((prev) => ({ ...prev, [field]: e.target.checked }));
   }
 
   function restoreDefaults() {
@@ -126,7 +155,7 @@ export default function Settings() {
 
     setSaving(true);
     try {
-      const payload = {};
+      const payload = { notifyTemperature: form.notifyTemperature, notifyHumidity: form.notifyHumidity };
       for (const field of REQUIRED_FIELDS) payload[field] = parseDecimal(form[field]);
       for (const field of OPTIONAL_FIELDS) payload[field] = form[field] === '' ? null : parseDecimal(form[field]);
 
@@ -189,6 +218,8 @@ export default function Settings() {
               onMaxChange={update('temperatureMax')}
               range={preview?.temperature}
               rangeError={rangeErrors.temperature}
+              notify={form.notifyTemperature}
+              onNotifyChange={updateCheckbox('notifyTemperature')}
             />
             <VariableSection
               title="Umidade"
@@ -206,6 +237,8 @@ export default function Settings() {
               onMaxChange={update('humidityMax')}
               range={preview?.humidity}
               rangeError={rangeErrors.humidity}
+              notify={form.notifyHumidity}
+              onNotifyChange={updateCheckbox('notifyHumidity')}
             />
           </div>
 
@@ -232,54 +265,92 @@ export default function Settings() {
       )}
 
       {activeTab === 'appearance' && (
-        <div className="max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Modo escuro</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500">
-                {followsSystem
-                  ? 'Seguindo automaticamente o tema do seu dispositivo.'
-                  : 'Definido manualmente neste navegador.'}
-              </p>
+        <div className="max-w-xl space-y-4">
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Modo escuro</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">
+                  {followsSystem
+                    ? 'Seguindo automaticamente o tema do seu dispositivo.'
+                    : 'Definido manualmente neste navegador.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={darkMode}
+                onClick={toggleDarkMode}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${darkMode ? 'bg-brand-600' : 'bg-slate-300'}`}
+              >
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={darkMode}
-              onClick={toggleDarkMode}
-              className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${darkMode ? 'bg-brand-600' : 'bg-slate-300'}`}
-            >
-              <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${darkMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </button>
+
+            {!followsSystem && (
+              <button
+                type="button"
+                onClick={followSystemTheme}
+                className="mb-5 -mt-3 text-xs font-medium text-brand-600 hover:underline dark:text-brand-500"
+              >
+                Voltar a seguir o tema do dispositivo
+              </button>
+            )}
+
+            <div>
+              <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Cor de destaque</p>
+              <div className="flex flex-wrap gap-2">
+                {ACCENT_OPTIONS.map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setAccent(option.key)}
+                    title={option.label}
+                    className={`h-8 w-8 rounded-full ring-offset-2 ring-offset-white transition-shadow dark:ring-offset-slate-800 ${
+                      accent === option.key ? 'ring-2 ring-slate-900 dark:ring-slate-100' : ''
+                    }`}
+                    style={{ backgroundColor: option.swatch }}
+                  >
+                    <span className="sr-only">{option.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
-          {!followsSystem && (
-            <button
-              type="button"
-              onClick={followSystemTheme}
-              className="mb-5 -mt-3 text-xs font-medium text-brand-600 hover:underline dark:text-brand-500"
-            >
-              Voltar a seguir o tema do dispositivo
-            </button>
-          )}
-
-          <div>
-            <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Cor de destaque</p>
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <p className="mb-2 text-sm font-medium text-slate-700 dark:text-slate-200">Tamanho da fonte</p>
             <div className="flex gap-2">
-              {ACCENT_OPTIONS.map((option) => (
+              {FONT_SCALE_OPTIONS.map((option) => (
                 <button
                   key={option.key}
                   type="button"
-                  onClick={() => setAccent(option.key)}
-                  title={option.label}
-                  className={`h-8 w-8 rounded-full ring-offset-2 ring-offset-white transition-shadow dark:ring-offset-slate-800 ${
-                    accent === option.key ? 'ring-2 ring-slate-900 dark:ring-slate-100' : ''
+                  onClick={() => setFontScale(option.key)}
+                  className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                    fontScale === option.key
+                      ? 'bg-brand-600 text-white'
+                      : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
                   }`}
-                  style={{ backgroundColor: option.swatch }}
                 >
-                  <span className="sr-only">{option.label}</span>
+                  {option.label}
                 </button>
               ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Reduzir movimento</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500">Desliga transições e animações da interface.</p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={reducedMotion}
+                onClick={toggleReducedMotion}
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${reducedMotion ? 'bg-brand-600' : 'bg-slate-300'}`}
+              >
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${reducedMotion ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </button>
             </div>
           </div>
         </div>
@@ -309,6 +380,8 @@ function VariableSection({
   onMaxChange,
   range,
   rangeError,
+  notify,
+  onNotifyChange,
 }) {
   return (
     <div
@@ -330,18 +403,28 @@ function VariableSection({
       <p className="mb-2 text-xs text-slate-400 dark:text-slate-500">
         Se definidas, substituem o cálculo automático (ideal ± tolerância) para aquele lado da faixa.
       </p>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="mb-4 grid grid-cols-2 gap-4">
         <OptionalDecimalField label={`Mín (${unit})`} value={minValue} onChange={onMinChange} />
         <OptionalDecimalField label={`Máx (${unit})`} value={maxValue} onChange={onMaxChange} />
       </div>
 
       {range && (
-        <p className={`mt-3 text-xs ${rangeError ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
+        <p className={`mb-4 text-xs ${rangeError ? 'text-red-600 dark:text-red-400' : 'text-slate-500 dark:text-slate-400'}`}>
           {rangeError
             ? 'A taxa mínima precisa ser menor que a máxima.'
             : `Faixa aceitável: ${range.min.toFixed(1)}${unit} a ${range.max.toFixed(1)}${unit}`}
         </p>
       )}
+
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">Notificações</p>
+      <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+        <input type="checkbox" checked={notify} onChange={onNotifyChange} />
+        Notificar anomalias de {title.toLowerCase()}
+      </label>
+      <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+        Desligado, leituras fora do limite continuam marcadas como "fora do limite" no dashboard e histórico, mas
+        não geram notificação.
+      </p>
     </div>
   );
 }

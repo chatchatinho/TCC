@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Layout from '../components/Layout';
 import StatusBadge from '../components/StatusBadge';
 import Pagination from '../components/Pagination';
 import * as historyService from '../services/history';
 import * as devicesService from '../services/devices';
 import { formatDate, formatTime, formatNumber } from '../utils/format';
+import { PERIOD_OPTIONS, computeRange } from '../utils/periods';
 
 const initialFilters = {
   deviceId: '',
@@ -24,6 +25,13 @@ const SORT_COLUMNS = [
   { key: 'humidity', label: 'Umidade' },
 ];
 
+// <input type="datetime-local"> espera "YYYY-MM-DDTHH:mm" em horário LOCAL — mesmo
+// formato que os presets de período (Dashboard) já calculam como objetos Date.
+function toDatetimeLocalValue(date) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export default function History() {
   const [devices, setDevices] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
@@ -32,6 +40,8 @@ export default function History() {
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ items: [], total: 0, pageSize: 50 });
   const [loading, setLoading] = useState(true);
+  const [filtersOpen, setFiltersOpen] = useState(true);
+  const [activePeriod, setActivePeriod] = useState('');
 
   useEffect(() => {
     devicesService.listDevices().then(setDevices);
@@ -67,12 +77,29 @@ export default function History() {
   function updateFilter(field) {
     return (e) => {
       setPage(1);
+      if (field === 'dateFrom' || field === 'dateTo') setActivePeriod('');
       setFilters((prev) => ({ ...prev, [field]: e.target.value }));
     };
   }
 
+  function applyPeriodPreset(key) {
+    setActivePeriod(key);
+    setPage(1);
+    if (key === '') {
+      setFilters((prev) => ({ ...prev, dateFrom: '', dateTo: '' }));
+      return;
+    }
+    const { dateFrom, dateTo } = computeRange(key);
+    setFilters((prev) => ({
+      ...prev,
+      dateFrom: dateFrom ? toDatetimeLocalValue(dateFrom) : '',
+      dateTo: dateTo ? toDatetimeLocalValue(dateTo) : '',
+    }));
+  }
+
   function clearFilters() {
     setPage(1);
+    setActivePeriod('');
     setFilters(initialFilters);
   }
 
@@ -107,66 +134,135 @@ export default function History() {
       </div>
 
       <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen((v) => !v)}
+          className="flex w-full items-center justify-between"
+        >
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             Filtros
             {activeFilterCount > 0 && (
               <span className="ml-2 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-medium text-brand-700 dark:bg-brand-500/20 dark:text-brand-300">
                 {activeFilterCount} ativo{activeFilterCount > 1 ? 's' : ''}
               </span>
             )}
-          </h2>
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
-            >
-              Limpar filtros
-            </button>
-          )}
-        </div>
+          </span>
+          <span className="flex items-center gap-3">
+            {activeFilterCount > 0 && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  clearFilters();
+                }}
+                onKeyDown={(e) => e.key === 'Enter' && clearFilters()}
+                className="text-xs font-medium text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              >
+                Limpar filtros
+              </span>
+            )}
+            <span className="text-slate-400 dark:text-slate-500">{filtersOpen ? '▲' : '▼'}</span>
+          </span>
+        </button>
 
-        <FilterGroup label="Dispositivo e período">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <SelectField label="Dispositivo" value={filters.deviceId} onChange={updateFilter('deviceId')}>
-              <option value="">Todos</option>
-              {devices.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
-              ))}
-            </SelectField>
-            <Field label="De" type="datetime-local" value={filters.dateFrom} onChange={updateFilter('dateFrom')} />
-            <Field label="Até" type="datetime-local" value={filters.dateTo} onChange={updateFilter('dateTo')} />
+        {filtersOpen && (
+          <div className="mt-4">
+            <FilterGroup label="Dispositivo e período">
+              <div className="mb-2 flex flex-wrap gap-2">
+                {PERIOD_OPTIONS.filter((p) => p.key !== 'custom').map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => applyPeriodPreset(option.key)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      activePeriod === option.key
+                        ? 'bg-brand-600 text-white'
+                        : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+                {(filters.dateFrom || filters.dateTo) && (
+                  <button
+                    type="button"
+                    onClick={() => applyPeriodPreset('')}
+                    className="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700"
+                  >
+                    Limpar período
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <SelectField label="Dispositivo" value={filters.deviceId} onChange={updateFilter('deviceId')}>
+                  <option value="">Todos</option>
+                  {devices.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.name}
+                    </option>
+                  ))}
+                </SelectField>
+                <Field label="De" type="datetime-local" value={filters.dateFrom} onChange={updateFilter('dateFrom')} />
+                <Field label="Até" type="datetime-local" value={filters.dateTo} onChange={updateFilter('dateTo')} />
+              </div>
+            </FilterGroup>
+
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <FilterGroup label="Temperatura" accent="blue">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <SelectField label="Situação" value={filters.temperatureStatus} onChange={updateFilter('temperatureStatus')}>
+                    <option value="">Todas</option>
+                    <option value="normal">Normal</option>
+                    <option value="out_of_range">Fora do limite</option>
+                  </SelectField>
+                  <DebouncedField
+                    label="Mín (°C)"
+                    value={filters.temperatureMin}
+                    onCommit={(v) => {
+                      setPage(1);
+                      setFilters((prev) => ({ ...prev, temperatureMin: v }));
+                    }}
+                  />
+                  <DebouncedField
+                    label="Máx (°C)"
+                    value={filters.temperatureMax}
+                    onCommit={(v) => {
+                      setPage(1);
+                      setFilters((prev) => ({ ...prev, temperatureMax: v }));
+                    }}
+                  />
+                </div>
+              </FilterGroup>
+
+              <FilterGroup label="Umidade" accent="teal">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <SelectField label="Situação" value={filters.humidityStatus} onChange={updateFilter('humidityStatus')}>
+                    <option value="">Todas</option>
+                    <option value="normal">Normal</option>
+                    <option value="out_of_range">Fora do limite</option>
+                  </SelectField>
+                  <DebouncedField
+                    label="Mín (%)"
+                    value={filters.humidityMin}
+                    onCommit={(v) => {
+                      setPage(1);
+                      setFilters((prev) => ({ ...prev, humidityMin: v }));
+                    }}
+                  />
+                  <DebouncedField
+                    label="Máx (%)"
+                    value={filters.humidityMax}
+                    onCommit={(v) => {
+                      setPage(1);
+                      setFilters((prev) => ({ ...prev, humidityMax: v }));
+                    }}
+                  />
+                </div>
+              </FilterGroup>
+            </div>
           </div>
-        </FilterGroup>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <FilterGroup label="Temperatura" accent="blue">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <SelectField label="Situação" value={filters.temperatureStatus} onChange={updateFilter('temperatureStatus')}>
-                <option value="">Todas</option>
-                <option value="normal">Normal</option>
-                <option value="out_of_range">Fora do limite</option>
-              </SelectField>
-              <Field label="Mín (°C)" type="number" value={filters.temperatureMin} onChange={updateFilter('temperatureMin')} />
-              <Field label="Máx (°C)" type="number" value={filters.temperatureMax} onChange={updateFilter('temperatureMax')} />
-            </div>
-          </FilterGroup>
-
-          <FilterGroup label="Umidade" accent="teal">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <SelectField label="Situação" value={filters.humidityStatus} onChange={updateFilter('humidityStatus')}>
-                <option value="">Todas</option>
-                <option value="normal">Normal</option>
-                <option value="out_of_range">Fora do limite</option>
-              </SelectField>
-              <Field label="Mín (%)" type="number" value={filters.humidityMin} onChange={updateFilter('humidityMin')} />
-              <Field label="Máx (%)" type="number" value={filters.humidityMax} onChange={updateFilter('humidityMax')} />
-            </div>
-          </FilterGroup>
-        </div>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -251,6 +347,39 @@ function Field({ label, type, value, onChange }) {
         type={type}
         value={value}
         onChange={onChange}
+        className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+      />
+    </label>
+  );
+}
+
+// Campo numérico com digitação local instantânea, mas que só dispara a busca (via
+// onCommit) 400ms depois de parar de digitar — evita recarregar a tabela a cada dígito
+// enquanto o usuário ainda está escrevendo um número de dois ou três dígitos.
+function DebouncedField({ label, value, onCommit, delay = 400 }) {
+  const [localValue, setLocalValue] = useState(value);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+
+  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+
+  function handleChange(e) {
+    const next = e.target.value;
+    setLocalValue(next);
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = setTimeout(() => onCommit(next), delay);
+  }
+
+  return (
+    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+      {label}
+      <input
+        type="number"
+        value={localValue}
+        onChange={handleChange}
         className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
       />
     </label>

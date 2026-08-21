@@ -16,3 +16,31 @@
 body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100;
 }
+
+/* Tamanho da fonte (Configurações → Aparência): como o Tailwind usa rem para a maior
+   parte dos tamanhos/espaçamentos, escalar o font-size da raiz escala o app inteiro de
+   forma proporcional, sem precisar tocar em nenhuma classe utilitária. */
+html {
+  font-size: var(--app-font-scale, 100%);
+}
+
+/* "Reduzir movimento" (Configurações → Aparência): zera transições/animações CSS no
+   app inteiro. Também respeita a preferência de acessibilidade do próprio sistema
+   operacional, mesmo que o usuário nunca tenha mexido nessa opção aqui. */
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  transition-duration: 0.001ms !important;
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

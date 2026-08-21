@@ -22,6 +22,8 @@ const updateSettingsSchema = z
     humidityMax: optionalRate.refine((v) => v == null || (v >= 0 && v <= 100), {
       message: 'Taxa máxima de umidade deve estar entre 0 e 100%.',
     }),
+    notifyTemperature: z.boolean(),
+    notifyHumidity: z.boolean(),
   })
   .refine((data) => data.temperatureMin == null || data.temperatureMax == null || data.temperatureMin < data.temperatureMax, {
     message: 'A taxa mínima de temperatura deve ser menor que a máxima.',

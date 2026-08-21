@@ -6,6 +6,7 @@ function serializeUser(user) {
     email: user.email,
     birthDate: user.birthDate,
     avatarData: user.avatarData ?? null,
+    lastLoginAt: user.lastLoginAt ?? null,
     createdAt: user.createdAt,
   };
 }

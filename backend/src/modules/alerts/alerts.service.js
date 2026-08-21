@@ -11,7 +11,12 @@ const VARIABLES = ['temperature', 'humidity'];
 //   - fora da faixa e sem alerta ativo para device+variável -> abre um novo alerta;
 //   - fora da faixa e já existe alerta ativo -> apenas atualiza o valor de pico;
 //   - dentro da faixa e existe alerta ativo -> encerra o alerta (ended_at = agora).
-async function evaluateMeasurement(measurement, device, thresholds) {
+// `notifyFlags` (Setting.notifyTemperature/notifyHumidity) desliga a geração de
+// alertas por variável — quem não se importa com umidade, por exemplo, pode desligar
+// só aquela. Um alerta que já estava ativo antes de desligar ainda é encerrado
+// normalmente quando a leitura volta ao normal (não fica "preso" aberto para sempre);
+// só a ABERTURA de novos alertas para a variável desligada é que é pulada.
+async function evaluateMeasurement(measurement, device, thresholds, notifyFlags = { temperature: true, humidity: true }) {
   for (const variable of VARIABLES) {
     const value = Number(measurement[variable]);
     const { min, max } = thresholds[variable];
@@ -22,6 +27,10 @@ async function evaluateMeasurement(measurement, device, thresholds) {
     });
 
     if (isOutOfRange) {
+      if (!notifyFlags[variable] && !activeAlert) {
+        continue;
+      }
+
       const direction = value < min ? 'below_min' : 'above_max';
 
       if (!activeAlert) {

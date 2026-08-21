@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { useAuth } from '../context/AuthContext';
 import * as usersService from '../services/users';
+import * as devicesService from '../services/devices';
+import * as settingsService from '../services/settings';
+import * as alertsService from '../services/alerts';
 import { formatDate, formatDateTime } from '../utils/format';
 
 const MAX_AVATAR_BYTES = 500 * 1024;
@@ -187,14 +190,91 @@ function DataTab() {
           {saving ? 'Salvando…' : 'Salvar alterações'}
         </button>
       </form>
+
+      <ExportDataSection />
     </>
   );
 }
 
+// Junta perfil, dispositivos (sem o token, só o que a API já expõe), configurações e
+// alertas em um único JSON e devolve como arquivo — não depende de nenhum endpoint
+// novo, só agrupa o que as telas já consultam separadamente.
+function ExportDataSection() {
+  const { user } = useAuth();
+  const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleExport() {
+    setError('');
+    setExporting(true);
+    try {
+      const [devices, settingsData, alertsData] = await Promise.all([
+        devicesService.listDevices(),
+        settingsService.getSettings(),
+        alertsService.listAlerts({ pageSize: 100 }),
+      ]);
+
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        perfil: user,
+        dispositivos: devices,
+        configuracoes: settingsData.settings,
+        notificacoes: alertsData.alerts,
+      };
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `thermosense-meus-dados-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Não foi possível gerar o arquivo.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  return (
+    <div className="mt-6 max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <h2 className="mb-1 text-sm font-semibold text-slate-700 dark:text-slate-200">Baixar meus dados</h2>
+      <p className="mb-4 text-xs text-slate-500 dark:text-slate-400">
+        Gera um arquivo JSON com seu perfil, dispositivos, configurações e notificações — para guardar uma cópia
+        ou levar para outro lugar.
+      </p>
+      {error && <p className="mb-3 text-xs text-red-600 dark:text-red-400">{error}</p>}
+      <button
+        type="button"
+        onClick={handleExport}
+        disabled={exporting}
+        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+      >
+        {exporting ? 'Gerando…' : 'Baixar arquivo (.json)'}
+      </button>
+    </div>
+  );
+}
+
 function SecurityTab() {
+  const { user } = useAuth();
   return (
     <>
-      <ChangePasswordForm />
+      <div className="max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Último login</p>
+        <p className="text-sm text-slate-700 dark:text-slate-200">
+          {user?.lastLoginAt ? formatDateTime(user.lastLoginAt) : 'Este é o seu primeiro login.'}
+        </p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+          Se não reconhecer esse acesso, troque sua senha abaixo.
+        </p>
+      </div>
+
+      <div className="mt-6">
+        <ChangePasswordForm />
+      </div>
       <DeleteAccountSection />
     </>
   );

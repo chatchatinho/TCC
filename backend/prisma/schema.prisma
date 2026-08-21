@@ -27,6 +27,10 @@ model User {
   // enviado por e-mail e nunca é persistido. Expira em 1h (ver auth.service.js).
   passwordResetTokenHash String?   @map("password_reset_token_hash")
   passwordResetExpiresAt DateTime? @map("password_reset_expires_at") @db.Timestamptz(3)
+  // Atualizado a cada login bem-sucedido; o valor exibido ao usuário é o de ANTES dessa
+  // atualização (o login anterior), não o da sessão que ele acabou de abrir — mesmo
+  // princípio de "último acesso" usado por Gmail/GitHub (ver auth.service.js#login).
+  lastLoginAt            DateTime? @map("last_login_at") @db.Timestamptz(3)
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
@@ -91,6 +95,12 @@ model Setting {
   humidityTolerance    Decimal  @default(10) @map("humidity_tolerance") @db.Decimal(5, 2)
   humidityMin          Decimal? @map("humidity_min") @db.Decimal(5, 2)
   humidityMax          Decimal? @map("humidity_max") @db.Decimal(5, 2)
+  // Desligam a geração de notificações/alertas daquela variável especificamente (o
+  // usuário pode não se importar com umidade, por exemplo) — os cards de status no
+  // dashboard/histórico continuam mostrando normal/fora do limite normalmente, só o
+  // motor de alertas (evaluateMeasurement) para de abrir eventos para a variável.
+  notifyTemperature    Boolean  @default(true) @map("notify_temperature")
+  notifyHumidity       Boolean  @default(true) @map("notify_humidity")
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
