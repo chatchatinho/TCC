@@ -61,6 +61,7 @@ export default function Dashboard() {
   const [period, setPeriod] = useState('6h');
   const [chartData, setChartData] = useState({ labels: [], temperature: [], humidity: [] });
   const [alertsRefreshKey, setAlertsRefreshKey] = useState(0);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const simulatingRef = useRef(false);
 
   const loadLatest = useCallback(async () => {
@@ -72,7 +73,10 @@ export default function Dashboard() {
     }
   }, []);
 
-  const primary = latest[0];
+  // Enquanto o usuário não escolher um dispositivo (ou se o escolhido tiver sido
+  // removido), cai no primeiro da lista — mesmo comportamento de antes para quem só
+  // tem um dispositivo.
+  const primary = latest.find((item) => item.device.id === selectedDeviceId) ?? latest[0];
 
   const loadChart = useCallback(async () => {
     if (!primary?.device?.id) return;
@@ -164,9 +168,27 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
+        </div>
+        {latest.length > 1 && (
+          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
+            Dispositivo
+            <select
+              value={device.id}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              className="mt-1 block min-w-[10rem] rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            >
+              {latest.map((item) => (
+                <option key={item.device.id} value={item.device.id}>
+                  {item.device.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
 
       <AlertsBanner refreshKey={alertsRefreshKey} />

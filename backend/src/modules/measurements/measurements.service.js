@@ -45,8 +45,10 @@ async function create(device, { temperature, humidity, timestamp }, { source = '
 }
 
 // Última leitura de cada dispositivo do usuário — alimenta os cards do dashboard.
+// Ordenado por criação (mesmo critério de devicesService.list) para que o seletor de
+// dispositivo do dashboard mostre uma ordem estável entre requisições.
 async function latestByUser(userId) {
-  const devices = await prisma.device.findMany({ where: { userId } });
+  const devices = await prisma.device.findMany({ where: { userId }, orderBy: { createdAt: 'asc' } });
 
   const results = await Promise.all(
     devices.map(async (device) => {

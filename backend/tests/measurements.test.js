@@ -95,6 +95,20 @@ describe('GET /api/measurements/latest', () => {
     expect(Number(res.body.latest[0].measurement.temperature)).toBeCloseTo(24.5);
     expect(res.body.latest[0].device.lastSeenAt).not.toBeNull();
   });
+
+  test('com múltiplos dispositivos, traz um item por dispositivo, na ordem de criação', async () => {
+    const { owner, device: firstDevice } = await setupDevice();
+    const secondRes = await owner.agent.post('/api/devices').send({ name: 'Segundo sensor' });
+    const secondDevice = secondRes.body.device;
+
+    const res = await owner.agent.get('/api/measurements/latest');
+
+    expect(res.status).toBe(200);
+    expect(res.body.latest).toHaveLength(2);
+    expect(res.body.latest.map((item) => item.device.id)).toEqual([firstDevice.id, secondDevice.id]);
+    // Dispositivo recém-criado ainda não tem leitura nenhuma.
+    expect(res.body.latest[1].measurement).toBeNull();
+  });
 });
 
 describe('lastRealMeasurementAt — distinguir hardware real de simulação', () => {
