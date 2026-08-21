@@ -11,6 +11,7 @@ Documentação completa em [`docs/`](docs/):
 - [`docs/02-integracao.md`](docs/02-integracao.md) — verificação de integração ponta a ponta
 - [`docs/03-seguranca.md`](docs/03-seguranca.md) — revisão de segurança
 - [`docs/04-documentacao-tecnica.md`](docs/04-documentacao-tecnica.md) — documentação técnica completa (com diagramas)
+- [`docs/05-guia-teste-iniciante.md`](docs/05-guia-teste-iniciante.md) — instalação passo a passo para quem nunca configurou um ambiente de desenvolvimento (Windows, do zero)
 
 ## Funcionalidades
 
