@@ -1,8 +1,9 @@
 const { z } = require('zod');
 
-// Faixa fisicamente plausível para um termo-higrômetro comum (DHT11/DHT22/SHT31/BME280
-// e similares) — ampla o suficiente para não rejeitar sensores diferentes do DHT22
-// usado como referência no firmware, mas suficiente para descartar lixo (seção 26).
+// Faixa fisicamente plausível para um termo-higrômetro comum (o firmware usa um DHT11,
+// que opera 0-50°C / 20-90% UR, mas a validação fica mais ampla de propósito para não
+// rejeitar leituras só por estarem fora da faixa nominal de precisão do sensor — apenas
+// o que é fisicamente impossível é descartado aqui; ver seção 26).
 const createMeasurementSchema = z.object({
   device_id: z.string().min(1, 'device_id é obrigatório.'),
   temperature: z.coerce.number().finite().min(-40).max(80),

@@ -54,8 +54,7 @@ Arquitetura em **3 camadas**, clássica e adequada para TCC: cliente web (SPA), 
 
 ```
 ┌────────────────────┐
-│   Sensor (DHT22/    │
-│   DHT11/equivalente)│
+│   Sensor (DHT11)     │
 └─────────┬───────────┘
           │ leitura digital (GPIO)
           ▼
@@ -131,7 +130,7 @@ Modelo relacional normalizado (3FN). Todas as tabelas têm `id` (UUID, chave pri
 |---|---|---|
 | id | uuid PK | |
 | device_id | uuid FK → devices.id NOT NULL | |
-| temperature | numeric(5,2) NOT NULL | validado (ex. -40 a 80 °C, faixa típica DHT22) |
+| temperature | numeric(5,2) NOT NULL | validado (ex. -40 a 80 °C — faixa ampla, o DHT11 usado opera 0–50 °C) |
 | humidity | numeric(5,2) NOT NULL | validado 0–100 |
 | measured_at | timestamptz NOT NULL | horário informado pelo ESP32 (ou gerado no servidor se ausente) |
 | received_at | timestamptz NOT NULL DEFAULT now() | horário de chegada no servidor |
@@ -276,10 +275,12 @@ TCC/
 │   ├── .env.example
 │   └── package.json
 ├── esp32/
+│   ├── README.md                    (fiação, bibliotecas, configuração, troubleshooting)
 │   └── firmware/
 │       ├── firmware.ino
 │       ├── config.example.h
-│       └── sensor/                (camada de abstração do sensor)
+│       └── src/                       (camada de abstração do sensor — só "src/" é
+│                                        compilada automaticamente pelo Arduino IDE)
 ├── database/
 │   └── (documentação adicional do schema/ER, se preciso além do prisma)
 ├── docs/
@@ -305,7 +306,7 @@ TCC/
 ## 12. Decisões aprovadas (21/08/2026)
 
 1. **TypeScript vs JavaScript** → **JavaScript puro** em todo o stack (backend e frontend). Sem passo de compilação extra; tipagem pode ser adicionada depois se necessário.
-2. **Sensor físico** → ainda **não definido** pelo autor do TCC. Decisão: o firmware é escrito com **DHT22 como sensor de referência/placeholder** (mais preciso, faixa de leitura maior, biblioteca `DHT sensor library` bem documentada), mas **toda a leitura do sensor fica isolada atrás de uma camada de abstração** (`esp32/firmware/sensor/`, uma função `readSensor()` que retorna `{ temperature, humidity, valid }`). Trocar para DHT11, SHT31, BME280 etc. exigirá alterar apenas essa camada, sem tocar em Wi-Fi, autenticação ou envio HTTP. As faixas de validação no backend serão as fisicamente plausíveis para termo-higrômetros comuns (ex. -40°C a 80°C, 0-100% UR) para não rejeitar um sensor diferente do DHT22 por engano.
+2. **Sensor físico** → **DHT11** (definido em 21/08/2026). Faixas do datasheet: temperatura 0–50 °C (±2 °C de precisão), umidade 20–90% UR (±5% de precisão), leitura a cada ≥1s. O firmware usa a `DHT sensor library` (Adafruit) sobre esse sensor, mas **toda a leitura fica isolada atrás de uma camada de abstração** (`esp32/firmware/sensor/`, uma função `readSensor()` que retorna `{ temperature, humidity, valid }`) — trocar para DHT22, SHT31, BME280 etc. no futuro exigirá alterar só essa camada, sem tocar em Wi-Fi, autenticação ou envio HTTP. As faixas de validação no backend continuam as fisicamente plausíveis para termo-higrômetros comuns (-40°C a 80°C, 0-100% UR), mais amplas que o DHT11 de propósito — não rejeitam uma leitura só porque está fora do range de precisão nominal do sensor, apenas o que é fisicamente impossível.
 3. **Ambiente de demonstração** → **tudo local**: backend, PostgreSQL e frontend rodando na máquina do autor, ESP32 na mesma rede Wi-Fi (`API_URL` apontando para o IP local da máquina, ex. `https://192.168.x.x:PORT` ou HTTP em ambiente local de desenvolvimento). Sem dependência de deploy externo/internet no dia da banca. `.env.example` e README vão documentar esse cenário como padrão; deploy em nuvem fica como possibilidade futura mencionada na documentação, não implementada agora.
 4. **Múltiplos dispositivos por usuário** → o **banco de dados continua modelado para suportar vários** (FK simples em `devices.user_id`, sem unicidade), mas o **frontend e o fluxo de demonstração assumem um único dispositivo ativo por usuário**: a tela de "Dispositivos" nasce simples (ver/editar/regenerar token de 1 dispositivo, com opção de cadastrar novo se o usuário quiser mais — sem necessidade de seletor complexo de "dispositivo atual" no dashboard). Isso reduz telas e estados para construir/testar agora, sem fechar a porta para expansão futura.
 
