@@ -53,8 +53,12 @@ src/
   manipulado em JavaScript/localStorage (mitiga XSS).
 - **Atualização por polling (10s)**, não WebSocket/SSE — decisão registrada em
   `../docs/01-arquitetura-e-decisoes.md`, adequada ao volume de dados de um TCC.
-- **Simulação sem hardware**: os botões "Simular leitura" no Dashboard chamam
-  `POST /api/measurements/simulate`, permitindo demonstrar o fluxo completo (leitura →
-  dashboard → histórico → alerta) sem o ESP32 físico conectado.
+- **Simulação automática sem hardware**: o Dashboard chama `POST /api/measurements/simulate`
+  sozinho, a cada 5s, sem botão manual — não precisa fazer nada para ver o fluxo completo
+  (leitura → dashboard → histórico → alerta) funcionando sem o ESP32 físico conectado. A
+  proporção é 100:5 de leituras normais para leituras fora do limite configurado em
+  Configurações. Assim que um ESP32 físico começa a enviar leituras reais para o mesmo
+  dispositivo, a simulação automática é completamente desligada (o backend expõe
+  `device.lastRealMeasurementAt` para isso).
 - **Fuso horário**: toda formatação de data passa por `src/utils/format.js`, que converte
   o timestamp UTC vindo da API para `America/Sao_Paulo` só na hora de exibir.

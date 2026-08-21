@@ -168,9 +168,10 @@ Faça login com o usuário de demonstração (criado no passo 9 pelo `db:seed`):
 - **E-mail**: `teste@tcc.local`
 - **Senha**: `Senha@Teste123`
 
-No Dashboard, use os botões **"Simular leitura normal"** e **"Simular leitura fora do
-limite"** para gerar dados e ver os gráficos e alertas funcionando — sem precisar do
-ESP32 físico.
+No Dashboard, leituras simuladas aparecem sozinhas, automaticamente, a cada 5 segundos —
+não precisa clicar em nada. Espere alguns segundos e observe os gráficos e o card de
+temperatura/umidade se atualizando; de vez em quando (proporção de 5 a cada 105 leituras)
+uma leitura vem fora do limite configurado, gerando um alerta.
 
 ## Problemas comuns e soluções
 

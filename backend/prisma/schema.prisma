@@ -46,6 +46,10 @@ model Device {
   userId           String    @map("user_id")
   active           Boolean   @default(true)
   lastSeenAt       DateTime? @map("last_seen_at") @db.Timestamptz(3)
+  // Atualizado SÓ por leituras vindas do endpoint autenticado por dispositivo (nunca
+  // pelo endpoint de simulação) — é o sinal que o frontend usa para saber se um ESP32
+  // físico está ativo agora e, com isso, desligar a simulação automática do dashboard.
+  lastRealMeasurementAt DateTime? @map("last_real_measurement_at") @db.Timestamptz(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)

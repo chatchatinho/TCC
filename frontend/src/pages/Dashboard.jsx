@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as measurementsService from '../services/measurements';
 import * as historyService from '../services/history';
+import * as settingsService from '../services/settings';
 import Layout from '../components/Layout';
 import MetricCard from '../components/MetricCard';
 import LineChart from '../components/LineChart';
@@ -11,6 +12,48 @@ import { formatDateTime, formatNumber, formatTime } from '../utils/format';
 import { getDeviceStatus } from '../utils/deviceStatus';
 
 const POLL_INTERVAL_MS = 10_000;
+const AUTO_SIM_INTERVAL_MS = 5_000;
+// Proporção 100:5 (normal:fora do limite) pedida no escopo — 5 leituras fora do limite
+// a cada 105 leituras simuladas.
+const OUT_OF_RANGE_PROBABILITY = 5 / 105;
+// Se uma leitura real (ESP32 físico) chegou há menos que isso, a simulação automática
+// fica completamente pausada — evita misturar dado simulado com hardware de verdade.
+const REAL_HARDWARE_GRACE_MS = 60_000;
+
+function randomInRange(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+// Gera uma leitura simulada realista a partir dos limites configurados pelo usuário:
+// a maior parte das leituras cai dentro da faixa ideal, e uma pequena fração (proporção
+// 100:5) sai propositalmente do limite de temperatura ou de umidade (nunca os dois ao
+// mesmo tempo, para deixar claro no dashboard qual variável "disparou" o alerta).
+// Empurra um limite para fora, na direção sorteada, por uma quantidade aleatória entre
+// `minSpan` e `maxSpan`, sem deixar o valor sair da faixa fisicamente possível.
+function pushOutOfRange(limitMin, limitMax, minSpan, maxSpan, physicalMin, physicalMax) {
+  const direction = Math.random() < 0.5 ? -1 : 1;
+  const span = randomInRange(minSpan, maxSpan);
+  const base = direction < 0 ? limitMin : limitMax;
+  return Math.min(physicalMax, Math.max(physicalMin, base + direction * span));
+}
+
+function buildSimulatedReading(thresholds) {
+  let temperature = randomInRange(thresholds.temperature.min, thresholds.temperature.max);
+  let humidity = randomInRange(thresholds.humidity.min, thresholds.humidity.max);
+
+  if (Math.random() < OUT_OF_RANGE_PROBABILITY) {
+    if (Math.random() < 0.5) {
+      temperature = pushOutOfRange(thresholds.temperature.min, thresholds.temperature.max, 1, 3, 0, 60);
+    } else {
+      humidity = pushOutOfRange(thresholds.humidity.min, thresholds.humidity.max, 3, 8, 0, 100);
+    }
+  }
+
+  return {
+    temperature: Number(temperature.toFixed(1)),
+    humidity: Number(humidity.toFixed(1)),
+  };
+}
 
 export default function Dashboard() {
   const [latest, setLatest] = useState([]);
@@ -18,7 +61,7 @@ export default function Dashboard() {
   const [period, setPeriod] = useState('6h');
   const [chartData, setChartData] = useState({ labels: [], temperature: [], humidity: [] });
   const [alertsRefreshKey, setAlertsRefreshKey] = useState(0);
-  const [simulating, setSimulating] = useState(false);
+  const simulatingRef = useRef(false);
 
   const loadLatest = useCallback(async () => {
     try {
@@ -65,23 +108,36 @@ export default function Dashboard() {
     [primary],
   );
 
-  async function handleSimulate(outOfRange) {
-    if (!primary?.device) return;
-    setSimulating(true);
-    try {
-      const temperature = outOfRange ? 30 + Math.random() * 2 : 24 + Math.random() * 2;
-      const humidity = 55 + Math.random() * 5;
-      await measurementsService.simulateMeasurement({
-        deviceId: primary.device.id,
-        temperature: Number(temperature.toFixed(1)),
-        humidity: Number(humidity.toFixed(1)),
-      });
-      await Promise.all([loadLatest(), loadChart()]);
-      setAlertsRefreshKey((k) => k + 1);
-    } finally {
-      setSimulating(false);
-    }
-  }
+  // Simulação automática (sem botão): a cada 5s, se nenhum ESP32 físico tiver mandado
+  // uma leitura real recentemente para este dispositivo, gera uma leitura simulada
+  // relativa aos limites configurados pelo usuário. Some completamente assim que o
+  // hardware real começa a enviar dados (ver `lastRealMeasurementAt`).
+  const deviceId = primary?.device?.id;
+  const lastRealMeasurementAt = primary?.device?.lastRealMeasurementAt;
+
+  useEffect(() => {
+    if (!deviceId) return undefined;
+
+    const usingRealHardware =
+      lastRealMeasurementAt && Date.now() - new Date(lastRealMeasurementAt).getTime() < REAL_HARDWARE_GRACE_MS;
+    if (usingRealHardware) return undefined;
+
+    const interval = setInterval(async () => {
+      if (simulatingRef.current) return;
+      simulatingRef.current = true;
+      try {
+        const { thresholds } = await settingsService.getSettings();
+        const reading = buildSimulatedReading(thresholds);
+        await measurementsService.simulateMeasurement({ deviceId, ...reading });
+        await Promise.all([loadLatest(), loadChart()]);
+        setAlertsRefreshKey((k) => k + 1);
+      } finally {
+        simulatingRef.current = false;
+      }
+    }, AUTO_SIM_INTERVAL_MS);
+
+    return () => clearInterval(interval);
+  }, [deviceId, lastRealMeasurementAt, loadLatest, loadChart]);
 
   if (loading) {
     return (
@@ -108,31 +164,9 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            disabled={simulating}
-            onClick={() => handleSimulate(false)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-            title="Testar o sistema sem o ESP32 físico conectado"
-          >
-            Simular leitura normal
-          </button>
-          <button
-            type="button"
-            disabled={simulating}
-            onClick={() => handleSimulate(true)}
-            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
-            title="Testar o sistema sem o ESP32 físico conectado"
-          >
-            Simular leitura fora do limite
-          </button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
       </div>
 
       <AlertsBanner refreshKey={alertsRefreshKey} />

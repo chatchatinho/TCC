@@ -21,14 +21,21 @@ function resolveMeasuredAt(timestamp) {
   return parsed;
 }
 
-async function create(device, { temperature, humidity, timestamp }) {
+// `source` distingue leituras vindas de um ESP32 físico ('real') das leituras geradas
+// pela simulação automática do dashboard ('simulated') — só a primeira atualiza
+// `lastRealMeasurementAt`, o sinal que o frontend usa para desligar a simulação.
+async function create(device, { temperature, humidity, timestamp }, { source = 'simulated' } = {}) {
   const measuredAt = resolveMeasuredAt(timestamp);
 
   const measurement = await prisma.measurement.create({
     data: { deviceId: device.id, temperature, humidity, measuredAt },
   });
 
-  await prisma.device.update({ where: { id: device.id }, data: { lastSeenAt: new Date() } });
+  const now = new Date();
+  await prisma.device.update({
+    where: { id: device.id },
+    data: source === 'real' ? { lastSeenAt: now, lastRealMeasurementAt: now } : { lastSeenAt: now },
+  });
 
   const settings = await settingsService.getOrCreate(device.userId);
   const thresholds = settingsService.computeThresholds(settings);

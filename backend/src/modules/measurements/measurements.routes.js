@@ -19,7 +19,7 @@ router.post(
   validateBody(createMeasurementSchema),
   async (req, res, next) => {
     try {
-      const measurement = await measurementsService.create(req.device, req.body);
+      const measurement = await measurementsService.create(req.device, req.body, { source: 'real' });
       res.status(201).json({
         id: measurement.id,
         measured_at: measurement.measuredAt,
@@ -69,7 +69,7 @@ router.get('/latest', requireAuth, async (req, res, next) => {
 router.post('/simulate', requireAuth, validateBody(simulateMeasurementSchema), async (req, res, next) => {
   try {
     const device = await devicesService.findOwned(req.userId, req.body.deviceId);
-    const measurement = await measurementsService.create(device, req.body);
+    const measurement = await measurementsService.create(device, req.body, { source: 'simulated' });
     res.status(201).json({
       id: measurement.id,
       measured_at: measurement.measuredAt,

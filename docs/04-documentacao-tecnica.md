@@ -146,6 +146,7 @@ erDiagram
         uuid user_id FK
         boolean active
         timestamptz last_seen_at
+        timestamptz last_real_measurement_at
     }
     MEASUREMENTS {
         uuid id PK

@@ -144,6 +144,10 @@ Volte para `http://localhost:5173`, vá em **Dashboard** — a leitura do sensor
 deve aparecer no card de Temperatura/Umidade em até 30 segundos (o intervalo
 configurado no `config.h`), e o status do dispositivo deve virar **🟢 Online**.
 
+> A simulação automática de leituras (que roda sozinha a cada 5s quando não há hardware
+> real conectado) se desliga automaticamente assim que o sistema detecta uma leitura real
+> chegando — não vai mais aparecer nenhum dado simulado misturado com o do seu ESP32.
+
 ## 12. Testar um alerta de verdade
 
 Segure o sensor DHT11 na mão, ou sopre nele, por alguns minutos, para forçar a

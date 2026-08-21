@@ -17,6 +17,7 @@ function serializeDevice(device) {
     name: device.name,
     active: device.active,
     lastSeenAt: device.lastSeenAt,
+    lastRealMeasurementAt: device.lastRealMeasurementAt,
     createdAt: device.createdAt,
   };
 }

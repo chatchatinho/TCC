@@ -96,3 +96,29 @@ describe('GET /api/measurements/latest', () => {
     expect(res.body.latest[0].device.lastSeenAt).not.toBeNull();
   });
 });
+
+describe('lastRealMeasurementAt — distinguir hardware real de simulação', () => {
+  test('leitura de dispositivo real (POST /api/measurements) grava lastRealMeasurementAt', async () => {
+    const { owner, device, secret } = await setupDevice();
+
+    await request(app)
+      .post('/api/measurements')
+      .set('X-Device-Key', secret)
+      .send({ device_id: device.deviceIdentifier, temperature: 24.5, humidity: 58 });
+
+    const res = await owner.agent.get('/api/measurements/latest');
+    expect(res.body.latest[0].device.lastRealMeasurementAt).not.toBeNull();
+  });
+
+  test('leitura simulada (POST /api/measurements/simulate) NÃO grava lastRealMeasurementAt', async () => {
+    const { owner, device } = await setupDevice();
+
+    await owner.agent
+      .post('/api/measurements/simulate')
+      .send({ deviceId: device.id, temperature: 24.5, humidity: 58 });
+
+    const res = await owner.agent.get('/api/measurements/latest');
+    expect(res.body.latest[0].device.lastSeenAt).not.toBeNull();
+    expect(res.body.latest[0].device.lastRealMeasurementAt).toBeNull();
+  });
+});
