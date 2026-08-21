@@ -1,0 +1,70 @@
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+
+const NAV_ITEMS = [
+  { to: '/dashboard', label: 'Dashboard', icon: '📊' },
+  { to: '/history', label: 'Histórico', icon: '📋' },
+  { to: '/devices', label: 'Dispositivos', icon: '📡' },
+  { to: '/settings', label: 'Configurações', icon: '⚙️' },
+  { to: '/profile', label: 'Perfil', icon: '👤' },
+];
+
+export default function Layout({ children }) {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  async function handleLogout() {
+    await logout();
+    navigate('/login');
+  }
+
+  const navLinkClass = ({ isActive }) =>
+    `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+      isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
+    }`;
+
+  return (
+    <div className="flex min-h-screen flex-col md:flex-row">
+      {/* Topbar mobile */}
+      <header className="flex items-center justify-between border-b border-slate-200 bg-white p-4 md:hidden">
+        <span className="text-lg font-semibold text-brand-700">MonitorTCC</span>
+        <button type="button" onClick={() => setMobileOpen((v) => !v)} className="rounded-md border border-slate-300 px-3 py-1 text-sm">
+          Menu
+        </button>
+      </header>
+
+      {/* Sidebar */}
+      <aside
+        className={`w-full shrink-0 border-b border-slate-200 bg-white md:block md:w-64 md:border-b-0 md:border-r md:min-h-screen ${
+          mobileOpen ? 'block' : 'hidden'
+        }`}
+      >
+        <div className="hidden px-6 py-6 md:block">
+          <span className="text-xl font-semibold text-brand-700">MonitorTCC</span>
+        </div>
+        <nav className="flex flex-col gap-1 p-4">
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.to} to={item.to} className={navLinkClass} onClick={() => setMobileOpen(false)}>
+              <span>{item.icon}</span>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="border-t border-slate-200 p-4">
+          <p className="truncate px-3 text-xs text-slate-400">{user?.email}</p>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="mt-2 flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            🚪 Sair
+          </button>
+        </div>
+      </aside>
+
+      <main className="flex-1 p-4 md:p-8">{children}</main>
+    </div>
+  );
+}
