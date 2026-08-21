@@ -86,7 +86,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <Layout>
-        <p className="text-slate-500">Carregando…</p>
+        <p className="text-slate-500 dark:text-slate-400">Carregando…</p>
       </Layout>
     );
   }
@@ -94,8 +94,8 @@ export default function Dashboard() {
   if (!primary) {
     return (
       <Layout>
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
-          <p className="text-slate-600">Nenhum dispositivo cadastrado ainda.</p>
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-600 dark:bg-slate-800">
+          <p className="text-slate-600 dark:text-slate-300">Nenhum dispositivo cadastrado ainda.</p>
           <Link to="/devices" className="mt-3 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
             Cadastrar dispositivo
           </Link>
@@ -110,15 +110,15 @@ export default function Dashboard() {
     <Layout>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Dashboard</h1>
-          <p className="text-sm text-slate-500">{device.name} ({device.deviceIdentifier})</p>
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             disabled={simulating}
             onClick={() => handleSimulate(false)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-50"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
             title="Testar o sistema sem o ESP32 físico conectado"
           >
             Simular leitura normal
@@ -127,7 +127,7 @@ export default function Dashboard() {
             type="button"
             disabled={simulating}
             onClick={() => handleSimulate(true)}
-            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+            className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
             title="Testar o sistema sem o ESP32 físico conectado"
           >
             Simular leitura fora do limite
@@ -168,7 +168,9 @@ export default function Dashboard() {
             type="button"
             onClick={() => setPeriod(option.key)}
             className={`rounded-full px-3 py-1 text-xs font-medium ${
-              period === option.key ? 'bg-brand-600 text-white' : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50'
+              period === option.key
+                ? 'bg-brand-600 text-white'
+                : 'bg-white text-slate-600 border border-slate-300 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-600 dark:hover:bg-slate-700'
             }`}
           >
             {option.label}
@@ -177,18 +179,18 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Temperatura (°C)</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Temperatura (°C)</h2>
           {chartData.labels.length === 0 ? (
-            <p className="text-sm text-slate-400">Sem dados no período selecionado.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados no período selecionado.</p>
           ) : (
             <LineChart labels={chartData.labels} data={chartData.temperature} label="Temperatura" color="#2563eb" unit="°C" />
           )}
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-3 text-sm font-semibold text-slate-700">Umidade (%)</h2>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Umidade (%)</h2>
           {chartData.labels.length === 0 ? (
-            <p className="text-sm text-slate-400">Sem dados no período selecionado.</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados no período selecionado.</p>
           ) : (
             <LineChart labels={chartData.labels} data={chartData.humidity} label="Umidade" color="#0d9488" unit="%" />
           )}

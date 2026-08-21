@@ -14,12 +14,21 @@ const initialFilters = {
   temperatureMax: '',
   humidityMin: '',
   humidityMax: '',
-  status: '',
+  temperatureStatus: '',
+  humidityStatus: '',
 };
+
+const SORT_COLUMNS = [
+  { key: 'measuredAt', label: 'Data/Horário' },
+  { key: 'temperature', label: 'Temperatura' },
+  { key: 'humidity', label: 'Umidade' },
+];
 
 export default function History() {
   const [devices, setDevices] = useState([]);
   const [filters, setFilters] = useState(initialFilters);
+  const [sortBy, setSortBy] = useState('measuredAt');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [page, setPage] = useState(1);
   const [result, setResult] = useState({ items: [], total: 0, pageSize: 50 });
   const [loading, setLoading] = useState(true);
@@ -44,12 +53,12 @@ export default function History() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await historyService.getHistory(toApiParams(filters, { page, pageSize: 50 }));
+      const data = await historyService.getHistory(toApiParams(filters, { page, pageSize: 50, sortBy, sortOrder }));
       setResult(data);
     } finally {
       setLoading(false);
     }
-  }, [filters, page]);
+  }, [filters, page, sortBy, sortOrder]);
 
   useEffect(() => {
     load();
@@ -62,25 +71,35 @@ export default function History() {
     };
   }
 
+  function toggleSort(column) {
+    setPage(1);
+    if (sortBy === column) {
+      setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(column);
+      setSortOrder('desc');
+    }
+  }
+
   function handleExport() {
-    const url = historyService.buildExportUrl(toApiParams(filters));
+    const url = historyService.buildExportUrl(toApiParams(filters, { sortBy, sortOrder }));
     window.open(url, '_blank');
   }
 
   return (
     <Layout>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-2xl font-semibold text-slate-900">Histórico</h1>
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Histórico</h1>
         <button
           type="button"
           onClick={handleExport}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
         >
           Exportar CSV
         </button>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:grid-cols-3 lg:grid-cols-4">
         <SelectField label="Dispositivo" value={filters.deviceId} onChange={updateFilter('deviceId')}>
           <option value="">Todos</option>
           {devices.map((d) => (
@@ -91,46 +110,59 @@ export default function History() {
         </SelectField>
         <Field label="De" type="datetime-local" value={filters.dateFrom} onChange={updateFilter('dateFrom')} />
         <Field label="Até" type="datetime-local" value={filters.dateTo} onChange={updateFilter('dateTo')} />
-        <SelectField label="Situação" value={filters.status} onChange={updateFilter('status')}>
+
+        <SelectField label="Situação da temperatura" value={filters.temperatureStatus} onChange={updateFilter('temperatureStatus')}>
           <option value="">Todas</option>
           <option value="normal">Normal</option>
           <option value="out_of_range">Fora do limite</option>
         </SelectField>
         <Field label="Temp. mín (°C)" type="number" value={filters.temperatureMin} onChange={updateFilter('temperatureMin')} />
         <Field label="Temp. máx (°C)" type="number" value={filters.temperatureMax} onChange={updateFilter('temperatureMax')} />
+
+        <SelectField label="Situação da umidade" value={filters.humidityStatus} onChange={updateFilter('humidityStatus')}>
+          <option value="">Todas</option>
+          <option value="normal">Normal</option>
+          <option value="out_of_range">Fora do limite</option>
+        </SelectField>
+        <Field label="Umidade mín (%)" type="number" value={filters.humidityMin} onChange={updateFilter('humidityMin')} />
+        <Field label="Umidade máx (%)" type="number" value={filters.humidityMax} onChange={updateFilter('humidityMax')} />
       </div>
 
-      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500">
+          <table className="min-w-full divide-y divide-slate-200 text-sm dark:divide-slate-700">
+            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase text-slate-500 dark:bg-slate-900 dark:text-slate-400">
               <tr>
-                <th className="px-4 py-3">Data</th>
-                <th className="px-4 py-3">Horário</th>
-                <th className="px-4 py-3">Temperatura</th>
-                <th className="px-4 py-3">Umidade</th>
+                {SORT_COLUMNS.map((column) => (
+                  <th key={column.key} className="px-4 py-3" colSpan={column.key === 'measuredAt' ? 2 : 1}>
+                    <button type="button" onClick={() => toggleSort(column.key)} className="flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200">
+                      {column.label}
+                      {sortBy === column.key && <span>{sortOrder === 'asc' ? '▲' : '▼'}</span>}
+                    </button>
+                  </th>
+                ))}
                 <th className="px-4 py-3">Status temperatura</th>
                 <th className="px-4 py-3">Status umidade</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Carregando…
                   </td>
                 </tr>
               )}
               {!loading && result.items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Nenhuma medição encontrada para os filtros selecionados.
                   </td>
                 </tr>
               )}
               {!loading &&
                 result.items.map((item) => (
-                  <tr key={item.id}>
+                  <tr key={item.id} className="dark:text-slate-200">
                     <td className="px-4 py-2">{formatDate(item.measuredAt)}</td>
                     <td className="px-4 py-2">{formatTime(item.measuredAt)}</td>
                     <td className="px-4 py-2">{formatNumber(item.temperature)} °C</td>
@@ -154,13 +186,13 @@ export default function History() {
 
 function Field({ label, type, value, onChange }) {
   return (
-    <label className="text-xs font-medium text-slate-600">
+    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
       {label}
       <input
         type={type}
         value={value}
         onChange={onChange}
-        className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
       />
     </label>
   );
@@ -168,12 +200,12 @@ function Field({ label, type, value, onChange }) {
 
 function SelectField({ label, value, onChange, children }) {
   return (
-    <label className="text-xs font-medium text-slate-600">
+    <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
       {label}
       <select
         value={value}
         onChange={onChange}
-        className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        className="mt-1 block w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
       >
         {children}
       </select>

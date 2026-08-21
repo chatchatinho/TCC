@@ -58,36 +58,48 @@ export default function Devices() {
 
   return (
     <Layout>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900">Dispositivos</h1>
+      <h1 className="mb-6 text-2xl font-semibold text-slate-900 dark:text-slate-100">Dispositivos</h1>
 
       <div className="mb-6 grid grid-cols-1 gap-4">
-        {loading && <p className="text-slate-500">Carregando…</p>}
+        {loading && <p className="text-slate-500 dark:text-slate-400">Carregando…</p>}
 
         {!loading && devices.length === 0 && (
-          <p className="text-sm text-slate-500">Nenhum dispositivo cadastrado ainda. Adicione um abaixo.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Nenhum dispositivo cadastrado ainda. Adicione um abaixo.</p>
         )}
 
         {devices.map((device) => {
           const status = getDeviceStatus(device.lastSeenAt);
           return (
-            <div key={device.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div key={device.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-slate-900">{device.name}</p>
-                  <p className="text-sm text-slate-500">{device.deviceIdentifier}</p>
-                  <p className="mt-1 text-xs text-slate-400">
+                  <p className="font-semibold text-slate-900 dark:text-slate-100">{device.name}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{device.deviceIdentifier}</p>
+                  <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                     {status.dot} {status.label} · última comunicação: {formatDateTime(device.lastSeenAt)}
                   </p>
-                  <p className="text-xs text-slate-400">Associado a: {user?.fullName}</p>
+                  <p className="text-xs text-slate-400 dark:text-slate-500">Associado a: {user?.fullName}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => handleToggleActive(device)} className="rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleActive(device)}
+                    className="rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
                     {device.active ? 'Desativar' : 'Ativar'}
                   </button>
-                  <button type="button" onClick={() => handleRotate(device)} className="rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50">
+                  <button
+                    type="button"
+                    onClick={() => handleRotate(device)}
+                    className="rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-700"
+                  >
                     Regenerar token
                   </button>
-                  <button type="button" onClick={() => handleDelete(device)} className="rounded-md border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50">
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(device)}
+                    className="rounded-md border border-red-300 px-3 py-1 text-xs text-red-600 hover:bg-red-50 dark:border-red-500/30 dark:text-red-400 dark:hover:bg-red-500/10"
+                  >
                     Remover
                   </button>
                 </div>
@@ -97,8 +109,8 @@ export default function Devices() {
         })}
       </div>
 
-      <div className="max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-slate-700">Adicionar dispositivo</h2>
+      <div className="max-w-md rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Adicionar dispositivo</h2>
         <form onSubmit={handleCreate} className="flex gap-2">
           <input
             type="text"
@@ -106,14 +118,14 @@ export default function Devices() {
             placeholder="Nome (ex.: Sensor Sala)"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
           />
           <button type="submit" className="rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
             Adicionar
           </button>
         </form>
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-        <p className="mt-2 text-xs text-slate-400">
+        {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        <p className="mt-2 text-xs text-slate-400 dark:text-slate-500">
           O identificador (ex.: ESP32-XXXXXX) é gerado automaticamente. O token de acesso é exibido uma única vez após o cadastro.
         </p>
       </div>

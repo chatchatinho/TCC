@@ -24,14 +24,14 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-center text-2xl font-semibold text-brand-700">MonitorTCC</h1>
-        <p className="mt-1 text-center text-sm text-slate-500">Monitoramento de temperatura e umidade</p>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 dark:bg-slate-900">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h1 className="text-center text-2xl font-semibold text-brand-700 dark:text-brand-500">ThermoSense</h1>
+        <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">Monitoramento de temperatura e umidade</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="email">
+            <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="email">
               E-mail
             </label>
             <input
@@ -40,25 +40,30 @@ export default function Login() {
               required
               value={form.email}
               onChange={(e) => setForm({ ...form, email: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor="password">
-              Senha
-            </label>
+            <div className="mb-1 flex items-center justify-between">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor="password">
+                Senha
+              </label>
+              <Link to="/forgot-password" className="text-xs font-medium text-brand-600 hover:underline dark:text-brand-500">
+                Esqueci minha senha
+              </Link>
+            </div>
             <input
               id="password"
               type="password"
               required
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <button
             type="submit"
@@ -69,9 +74,9 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           Não tem uma conta?{' '}
-          <Link to="/register" className="font-medium text-brand-600 hover:underline">
+          <Link to="/register" className="font-medium text-brand-600 hover:underline dark:text-brand-500">
             Cadastre-se
           </Link>
         </p>

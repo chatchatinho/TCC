@@ -49,21 +49,45 @@ describe('GET /api/history', () => {
     );
   });
 
-  test('filtra por status=out_of_range', async () => {
+  test('filtra por temperatureStatus=out_of_range', async () => {
     const { owner } = await setupDeviceWithReadings();
 
-    const res = await owner.agent.get('/api/history').query({ status: 'out_of_range' });
+    const res = await owner.agent.get('/api/history').query({ temperatureStatus: 'out_of_range' });
 
     expect(res.body.total).toBe(2);
     expect(res.body.items.every((i) => i.temperatureStatus === 'out_of_range')).toBe(true);
   });
 
-  test('filtra por status=normal', async () => {
+  test('filtra por temperatureStatus=normal', async () => {
     const { owner } = await setupDeviceWithReadings();
 
-    const res = await owner.agent.get('/api/history').query({ status: 'normal' });
+    const res = await owner.agent.get('/api/history').query({ temperatureStatus: 'normal' });
 
     expect(res.body.total).toBe(3);
+  });
+
+  test('filtra por humidityStatus separadamente da temperatura', async () => {
+    const { owner, device } = await setupDeviceWithReadings();
+    // adiciona uma leitura com temperatura normal mas umidade fora do limite padrão (50-70%)
+    await prisma.measurement.create({
+      data: { deviceId: device.id, temperature: 24, humidity: 90, measuredAt: new Date('2026-08-21T15:00:00Z') },
+    });
+
+    const res = await owner.agent.get('/api/history').query({ humidityStatus: 'out_of_range' });
+
+    expect(res.body.total).toBe(1);
+    expect(res.body.items[0].humidityStatus).toBe('out_of_range');
+    expect(res.body.items[0].temperatureStatus).toBe('normal');
+  });
+
+  test('ordena por temperatura crescente e decrescente', async () => {
+    const { owner } = await setupDeviceWithReadings();
+
+    const asc = await owner.agent.get('/api/history').query({ sortBy: 'temperature', sortOrder: 'asc' });
+    const desc = await owner.agent.get('/api/history').query({ sortBy: 'temperature', sortOrder: 'desc' });
+
+    expect(asc.body.items.map((i) => Number(i.temperature))).toEqual([24, 25, 26, 30, 31]);
+    expect(desc.body.items.map((i) => Number(i.temperature))).toEqual([31, 30, 26, 25, 24]);
   });
 
   test('filtra por período (dateFrom/dateTo)', async () => {

@@ -12,6 +12,12 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     return res.status(err.statusCode).json({ error: err.message, details: err.details });
   }
 
+  // express.json() rejeita corpo malformado lançando um SyntaxError com esse marcador
+  // (do body-parser) — é erro de quem chamou a API (400), não uma falha do servidor.
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Corpo da requisição não é um JSON válido.' });
+  }
+
   console.error(err);
   res.status(500).json({ error: 'Erro interno do servidor.' });
 }

@@ -11,15 +11,24 @@ datasource db {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  fullName     String   @map("full_name")
+  id                     String    @id @default(uuid())
+  fullName               String    @map("full_name")
   // E-mail é normalizado para minúsculas na camada de aplicação antes de gravar/consultar,
   // já que o Prisma não expõe o tipo `citext` nativamente.
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  birthDate    DateTime @map("birth_date") @db.Date
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  email                  String    @unique
+  passwordHash           String    @map("password_hash")
+  birthDate              DateTime  @map("birth_date") @db.Date
+  // Foto de perfil opcional, guardada como data URL (base64) — evita depender de
+  // armazenamento de arquivos/S3 para um recurso opcional num projeto de TCC. Tamanho
+  // limitado na validação do backend (ver users.validation.js).
+  avatarData             String?   @map("avatar_data")
+  // Par usado no fluxo de "esqueci minha senha": só o HASH do token fica no banco
+  // (mesmo princípio do token de dispositivo) — o token em texto puro só existe no link
+  // enviado por e-mail e nunca é persistido. Expira em 1h (ver auth.service.js).
+  passwordResetTokenHash String?   @map("password_reset_token_hash")
+  passwordResetExpiresAt DateTime? @map("password_reset_expires_at") @db.Timestamptz(3)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   devices  Device[]
   settings Setting?

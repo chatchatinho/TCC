@@ -39,10 +39,10 @@ export default function Register() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
-      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-        <h1 className="text-center text-2xl font-semibold text-brand-700">Criar conta</h1>
-        <p className="mt-1 text-center text-sm text-slate-500">MonitorTCC</p>
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8 dark:bg-slate-900">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h1 className="text-center text-2xl font-semibold text-brand-700 dark:text-brand-500">Criar conta</h1>
+        <p className="mt-1 text-center text-sm text-slate-500 dark:text-slate-400">ThermoSense</p>
 
         <form onSubmit={handleSubmit} className="mt-6 flex flex-col gap-4">
           <Field label="Nome completo" id="fullName" type="text" value={form.fullName} onChange={update('fullName')} />
@@ -57,7 +57,7 @@ export default function Register() {
           />
           <Field label="Data de nascimento" id="birthDate" type="date" value={form.birthDate} onChange={update('birthDate')} />
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
           <button
             type="submit"
@@ -68,9 +68,9 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-500">
+        <p className="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
           Já tem uma conta?{' '}
-          <Link to="/login" className="font-medium text-brand-600 hover:underline">
+          <Link to="/login" className="font-medium text-brand-600 hover:underline dark:text-brand-500">
             Entrar
           </Link>
         </p>
@@ -82,7 +82,7 @@ export default function Register() {
 function Field({ label, id, type, value, onChange }) {
   return (
     <div>
-      <label className="mb-1 block text-sm font-medium text-slate-700" htmlFor={id}>
+      <label className="mb-1 block text-sm font-medium text-slate-700 dark:text-slate-200" htmlFor={id}>
         {label}
       </label>
       <input
@@ -91,7 +91,7 @@ function Field({ label, id, type, value, onChange }) {
         required
         value={value}
         onChange={onChange}
-        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
       />
     </div>
   );

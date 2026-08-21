@@ -40,11 +40,11 @@ export default function AlertsBanner({ refreshKey }) {
   if (!summary || summary.unreadCount === 0) return null;
 
   return (
-    <div className="mb-6 overflow-hidden rounded-xl border border-amber-200 bg-amber-50">
+    <div className="mb-6 overflow-hidden rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-500/30 dark:bg-amber-500/10">
       <button
         type="button"
         onClick={toggleExpanded}
-        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-amber-800"
+        className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-medium text-amber-800 dark:text-amber-400"
       >
         <span>
           ⚠️ Você possui {summary.unreadCount} alerta{summary.unreadCount === 1 ? '' : 's'} desde seu último acesso.
@@ -53,21 +53,21 @@ export default function AlertsBanner({ refreshKey }) {
       </button>
 
       {expanded && (
-        <div className="divide-y divide-amber-100 border-t border-amber-200 bg-white">
-          {loadingDetails && <p className="p-4 text-sm text-slate-500">Carregando…</p>}
+        <div className="divide-y divide-amber-100 border-t border-amber-200 bg-white dark:divide-slate-700 dark:border-amber-500/30 dark:bg-slate-800">
+          {loadingDetails && <p className="p-4 text-sm text-slate-500 dark:text-slate-400">Carregando…</p>}
           {!loadingDetails && unreadAlerts.length === 0 && (
-            <p className="p-4 text-sm text-slate-500">Nenhum alerta não lido encontrado.</p>
+            <p className="p-4 text-sm text-slate-500 dark:text-slate-400">Nenhum alerta não lido encontrado.</p>
           )}
           {unreadAlerts.map((alert) => (
             <div key={alert.id} className="flex items-center justify-between gap-4 p-4 text-sm">
               <div>
-                <p className="font-medium text-slate-800">
+                <p className="font-medium text-slate-800 dark:text-slate-100">
                   {VARIABLE_LABEL[alert.variable]} {DIRECTION_LABEL[alert.direction]}
                 </p>
-                <p className="text-slate-500">
+                <p className="text-slate-500 dark:text-slate-400">
                   Valor de pico: {formatNumber(alert.peakValue)} (limite: {formatNumber(alert.limitMin)}–{formatNumber(alert.limitMax)})
                 </p>
-                <p className="text-slate-400">
+                <p className="text-slate-400 dark:text-slate-500">
                   Início: {formatDateTime(alert.startedAt)}
                   {alert.endedAt ? ` · Fim: ${formatDateTime(alert.endedAt)}` : ' · ainda em andamento'}
                 </p>
@@ -75,7 +75,7 @@ export default function AlertsBanner({ refreshKey }) {
               <button
                 type="button"
                 onClick={() => markRead(alert.id)}
-                className="shrink-0 rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50"
+                className="shrink-0 rounded-md border border-slate-300 px-3 py-1 text-xs hover:bg-slate-50 dark:border-slate-600 dark:hover:bg-slate-700"
               >
                 Marcar como lido
               </button>

@@ -8,6 +8,7 @@ import {
   Legend,
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
+import { useTheme } from '../context/ThemeContext';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -16,6 +17,12 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 // e o volume de pontos exibido de cada vez é sempre pequeno o bastante (a API pagina
 // e filtra por período) para não precisar de uma escala temporal contínua.
 export default function LineChart({ labels, data, label, color, unit, min, max }) {
+  const { darkMode } = useTheme();
+  // Chart.js não lê classes Tailwind — as cores de grade/eixo precisam ser passadas
+  // explicitamente conforme o tema ativo.
+  const gridColor = darkMode ? 'rgba(148, 163, 184, 0.15)' : 'rgba(100, 116, 139, 0.1)';
+  const tickColor = darkMode ? '#94a3b8' : '#64748b';
+
   const chartData = {
     labels,
     datasets: [
@@ -43,8 +50,8 @@ export default function LineChart({ labels, data, label, color, unit, min, max }
       },
     },
     scales: {
-      x: { ticks: { maxTicksLimit: 8, autoSkip: true } },
-      y: { suggestedMin: min, suggestedMax: max },
+      x: { ticks: { maxTicksLimit: 8, autoSkip: true, color: tickColor }, grid: { color: gridColor } },
+      y: { suggestedMin: min, suggestedMax: max, ticks: { color: tickColor }, grid: { color: gridColor } },
     },
   };
 

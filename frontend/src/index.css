@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+/* Troca o critério do prefixo dark: de "preferência do sistema" (padrão do Tailwind v4)
+   para "existe um ancestral com a classe .dark" — necessário para o toggle de modo
+   escuro em Configurações funcionar independente do SO do usuário. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-brand-50: #eff6ff;
   --color-brand-100: #dbeafe;
@@ -9,5 +14,5 @@
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-900 dark:text-slate-100;
 }

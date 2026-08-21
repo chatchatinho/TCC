@@ -4,60 +4,66 @@ const settingsService = require('../settings/settings.service');
 
 const MAX_EXPORT_ROWS = 5000;
 
-// Monta o WHERE do Prisma a partir dos filtros. Sempre restrito aos dispositivos
-// do usuário autenticado — nunca aceita um deviceId de outro usuário.
+// Monta o WHERE do Prisma como uma lista de condições combinadas com AND — cada filtro
+// vira uma condição independente na lista, em vez de mutar um único objeto (abordagem
+// anterior tinha um bug: o filtro de status "fora do limite" podia sobrescrever/apagar
+// um filtro de faixa manual (temperatureMin/Max) definido junto). Sempre restrito aos
+// dispositivos do usuário autenticado — nunca aceita um deviceId de outro usuário.
 async function buildWhere(userId, filters) {
   const devices = await prisma.device.findMany({ where: { userId }, select: { id: true } });
   const deviceIds = devices.map((d) => d.id);
 
-  if (filters.deviceId) {
-    if (!deviceIds.includes(filters.deviceId)) {
-      throw new AppError(404, 'Dispositivo não encontrado.');
-    }
+  if (filters.deviceId && !deviceIds.includes(filters.deviceId)) {
+    throw new AppError(404, 'Dispositivo não encontrado.');
   }
 
-  const where = {
-    deviceId: filters.deviceId ? filters.deviceId : { in: deviceIds },
-  };
+  const conditions = [{ deviceId: filters.deviceId ? filters.deviceId : { in: deviceIds } }];
 
   if (filters.dateFrom || filters.dateTo) {
-    where.measuredAt = {};
-    if (filters.dateFrom) where.measuredAt.gte = filters.dateFrom;
-    if (filters.dateTo) where.measuredAt.lte = filters.dateTo;
+    const measuredAt = {};
+    if (filters.dateFrom) measuredAt.gte = filters.dateFrom;
+    if (filters.dateTo) measuredAt.lte = filters.dateTo;
+    conditions.push({ measuredAt });
   }
 
   if (filters.temperatureMin !== undefined || filters.temperatureMax !== undefined) {
-    where.temperature = {};
-    if (filters.temperatureMin !== undefined) where.temperature.gte = filters.temperatureMin;
-    if (filters.temperatureMax !== undefined) where.temperature.lte = filters.temperatureMax;
+    const temperature = {};
+    if (filters.temperatureMin !== undefined) temperature.gte = filters.temperatureMin;
+    if (filters.temperatureMax !== undefined) temperature.lte = filters.temperatureMax;
+    conditions.push({ temperature });
   }
 
   if (filters.humidityMin !== undefined || filters.humidityMax !== undefined) {
-    where.humidity = {};
-    if (filters.humidityMin !== undefined) where.humidity.gte = filters.humidityMin;
-    if (filters.humidityMax !== undefined) where.humidity.lte = filters.humidityMax;
+    const humidity = {};
+    if (filters.humidityMin !== undefined) humidity.gte = filters.humidityMin;
+    if (filters.humidityMax !== undefined) humidity.lte = filters.humidityMax;
+    conditions.push({ humidity });
   }
 
-  if (filters.status) {
+  // Filtros de situação por variável, independentes entre si — dá para combinar, ex.
+  // "temperatura normal E umidade fora do limite" também é uma consulta válida.
+  if (filters.temperatureStatus || filters.humidityStatus) {
     const settings = await settingsService.getOrCreate(userId);
     const { temperature, humidity } = settingsService.computeThresholds(settings);
 
-    if (filters.status === 'normal') {
-      where.AND = [
-        { temperature: { gte: temperature.min, lte: temperature.max } },
-        { humidity: { gte: humidity.min, lte: humidity.max } },
-      ];
-    } else {
-      where.OR = [
-        { temperature: { lt: temperature.min } },
-        { temperature: { gt: temperature.max } },
-        { humidity: { lt: humidity.min } },
-        { humidity: { gt: humidity.max } },
-      ];
+    if (filters.temperatureStatus === 'normal') {
+      conditions.push({ temperature: { gte: temperature.min, lte: temperature.max } });
+    } else if (filters.temperatureStatus === 'out_of_range') {
+      conditions.push({ OR: [{ temperature: { lt: temperature.min } }, { temperature: { gt: temperature.max } }] });
+    }
+
+    if (filters.humidityStatus === 'normal') {
+      conditions.push({ humidity: { gte: humidity.min, lte: humidity.max } });
+    } else if (filters.humidityStatus === 'out_of_range') {
+      conditions.push({ OR: [{ humidity: { lt: humidity.min } }, { humidity: { gt: humidity.max } }] });
     }
   }
 
-  return where;
+  return { AND: conditions };
+}
+
+function buildOrderBy(sortBy, sortOrder) {
+  return { [sortBy]: sortOrder };
 }
 
 async function annotateStatus(userId, measurements) {
@@ -75,12 +81,12 @@ async function annotateStatus(userId, measurements) {
 
 async function list(userId, filters) {
   const where = await buildWhere(userId, filters);
-  const { page, pageSize } = filters;
+  const { page, pageSize, sortBy, sortOrder } = filters;
 
   const [rows, total] = await Promise.all([
     prisma.measurement.findMany({
       where,
-      orderBy: { measuredAt: 'desc' },
+      orderBy: buildOrderBy(sortBy, sortOrder),
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
@@ -95,7 +101,7 @@ async function listForExport(userId, filters) {
   const where = await buildWhere(userId, filters);
   const rows = await prisma.measurement.findMany({
     where,
-    orderBy: { measuredAt: 'desc' },
+    orderBy: buildOrderBy(filters.sortBy, filters.sortOrder),
     take: MAX_EXPORT_ROWS,
   });
   return annotateStatus(userId, rows);

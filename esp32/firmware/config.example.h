@@ -20,6 +20,7 @@
 // (ou da regeneração) na tela "Dispositivos". Se perdido, gere um novo por lá.
 #define DEVICE_TOKEN "COLE_AQUI_O_TOKEN_GERADO_PELO_SISTEMA"
 
-// Intervalo entre leituras/envios, em milissegundos. O DHT11 não deve ser lido mais
-// que a cada ~1s; um intervalo maior também poupa a franquia de dados/rede.
-#define READING_INTERVAL_MS 30000
+// Intervalo entre leituras/envios, em milissegundos. O DHT11 suporta leituras a partir
+// de ~1s de intervalo; 5s dá uma margem de segurança confortável mantendo o dashboard
+// bem responsivo. Aumente esse valor se quiser economizar tráfego de rede.
+#define READING_INTERVAL_MS 5000

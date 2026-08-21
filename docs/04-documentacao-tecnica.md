@@ -1,4 +1,4 @@
-# Documentação Técnica — MonitorTCC
+# Documentação Técnica — ThermoSense
 
 > Documento de referência técnica do TCC, cobrindo objetivo, arquitetura, funcionamento
 > de cada camada, segurança, instalação e testes. Complementa

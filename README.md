@@ -1,4 +1,4 @@
-# MonitorTCC — Sistema Web de Monitoramento de Temperatura e Umidade com ESP32
+# ThermoSense — Sistema Web de Monitoramento de Temperatura e Umidade com ESP32
 
 Trabalho de Conclusão de Curso: sistema web para monitoramento de temperatura e umidade
 usando um ESP32 conectado à internet via Wi-Fi. Usuários se cadastram, fazem login e

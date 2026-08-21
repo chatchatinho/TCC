@@ -5,6 +5,7 @@ function serializeUser(user) {
     fullName: user.fullName,
     email: user.email,
     birthDate: user.birthDate,
+    avatarData: user.avatarData ?? null,
     createdAt: user.createdAt,
   };
 }
