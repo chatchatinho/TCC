@@ -12,7 +12,7 @@ import { formatDateTime, formatNumber, formatTime } from '../utils/format';
 import { getDeviceStatus } from '../utils/deviceStatus';
 
 const POLL_INTERVAL_MS = 10_000;
-const AUTO_SIM_INTERVAL_MS = 5_000;
+const AUTO_SIM_INTERVAL_MS = 2_000;
 // Proporção 100:5 (normal:fora do limite) pedida no escopo — 5 leituras fora do limite
 // a cada 105 leituras simuladas.
 const OUT_OF_RANGE_PROBABILITY = 5 / 105;
@@ -108,7 +108,7 @@ export default function Dashboard() {
     [primary],
   );
 
-  // Simulação automática (sem botão): a cada 5s, se nenhum ESP32 físico tiver mandado
+  // Simulação automática (sem botão): a cada 2s, se nenhum ESP32 físico tiver mandado
   // uma leitura real recentemente para este dispositivo, gera uma leitura simulada
   // relativa aos limites configurados pelo usuário. Some completamente assim que o
   // hardware real começa a enviar dados (ver `lastRealMeasurementAt`).

@@ -107,7 +107,7 @@ src/
 `POST /api/measurements/simulate` (autenticado como usuário, não como dispositivo) permite
 injetar uma leitura em qualquer dispositivo do próprio usuário — útil para demonstrar o fluxo
 completo (medição → dashboard → histórico → alerta) mesmo sem hardware conectado. O Dashboard do
-frontend chama esse endpoint automaticamente a cada 5s enquanto nenhum ESP32 físico estiver
+frontend chama esse endpoint automaticamente a cada 2s enquanto nenhum ESP32 físico estiver
 enviando dados (ver `Device.lastRealMeasurementAt`); leituras reais vindas de `POST
 /api/measurements` desligam a simulação automática enquanto o hardware estiver ativo.
 

@@ -34,7 +34,7 @@ Documentação completa em [`docs/`](docs/):
   filtros (dispositivo, período, faixa de valores, situação de temperatura e de
   umidade separadamente) e exportação CSV
 - Gerenciamento de dispositivos ESP32 (token de API com hash, nunca em texto puro)
-- Simulação automática de leituras (a cada 5s, proporção 100:5 normal:fora do limite) —
+- Simulação automática de leituras (a cada 2s, proporção 100:5 normal:fora do limite) —
   demonstra o sistema completo sem o hardware físico, e se desliga sozinha assim que um
   ESP32 real começa a enviar leituras de verdade
 - Firmware ESP32 (DHT11) pronto para uso, com Wi-Fi, NTP, reconexão e autenticação
@@ -137,7 +137,7 @@ Cadastre o dispositivo na tela "Dispositivos" do sistema web primeiro, para obte
 Fiação, bibliotecas e troubleshooting em [`esp32/README.md`](esp32/README.md).
 
 **Sem o hardware em mãos?** Não precisa fazer nada: o Dashboard já gera leituras simuladas
-sozinho, automaticamente, a cada 5 segundos (proporção 100:5 de leituras normais para leituras
+sozinho, automaticamente, a cada 2 segundos (proporção 100:5 de leituras normais para leituras
 fora do limite) — cobre a demonstração completa (dashboard, gráficos, alertas, histórico) sem
 precisar do ESP32 físico. Assim que um ESP32 físico real começar a enviar leituras de verdade
 para o mesmo dispositivo, a simulação automática é completamente desligada.

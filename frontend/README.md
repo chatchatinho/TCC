@@ -54,7 +54,7 @@ src/
 - **Atualização por polling (10s)**, não WebSocket/SSE — decisão registrada em
   `../docs/01-arquitetura-e-decisoes.md`, adequada ao volume de dados de um TCC.
 - **Simulação automática sem hardware**: o Dashboard chama `POST /api/measurements/simulate`
-  sozinho, a cada 5s, sem botão manual — não precisa fazer nada para ver o fluxo completo
+  sozinho, a cada 2s, sem botão manual — não precisa fazer nada para ver o fluxo completo
   (leitura → dashboard → histórico → alerta) funcionando sem o ESP32 físico conectado. A
   proporção é 100:5 de leituras normais para leituras fora do limite configurado em
   Configurações. Assim que um ESP32 físico começa a enviar leituras reais para o mesmo

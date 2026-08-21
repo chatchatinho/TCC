@@ -71,7 +71,7 @@ outro nome.
 
 Se o ESP32 não estiver disponível no momento (ex. para ensaiar a apresentação), não
 precisa fazer nada: o Dashboard já gera leituras simuladas sozinho, automaticamente, a
-cada 5 segundos (`POST /api/measurements/simulate` — ver `../backend/README.md`), com
+cada 2 segundos (`POST /api/measurements/simulate` — ver `../backend/README.md`), com
 uma pequena proporção saindo do limite configurado para demonstrar os alertas. Assim que
 o firmware real começar a enviar leituras de verdade, a simulação automática é desligada.
 
