@@ -165,29 +165,36 @@ export default function Dashboard() {
   }
 
   const { measurement, device } = primary;
+  const otherDevices = latest.filter((item) => item.device.id !== device.id);
 
   return (
     <Layout>
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
-        </div>
-        {latest.length > 1 && (
-          <label className="text-xs font-medium text-slate-600 dark:text-slate-300">
-            Dispositivo
+          {latest.length > 1 ? (
             <select
               value={device.id}
               onChange={(e) => setSelectedDeviceId(e.target.value)}
-              className="mt-1 block min-w-[10rem] rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+              aria-label="Trocar de dispositivo"
+              className="-ml-1 mt-0.5 rounded border-0 bg-transparent px-1 py-0 text-sm text-slate-500 hover:text-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:text-slate-400 dark:hover:text-slate-200"
             >
               {latest.map((item) => (
-                <option key={item.device.id} value={item.device.id}>
+                <option key={item.device.id} value={item.device.id} className="dark:bg-slate-800 dark:text-slate-100">
                   {item.device.name}
                 </option>
               ))}
             </select>
-          </label>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{device.name}</p>
+          )}
+        </div>
+        {otherDevices.length > 0 && (
+          <div className="space-y-0.5 text-right text-xs text-slate-600 dark:text-slate-300">
+            {otherDevices.map((item) => (
+              <OtherDeviceSummary key={item.device.id} item={item} />
+            ))}
+          </div>
         )}
       </div>
 
@@ -253,5 +260,20 @@ export default function Dashboard() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+// Linha compacta e somente-informativa (a troca de dispositivo acontece no seletor
+// abaixo de "Dashboard") com a temperatura atual de um dispositivo que não é o
+// exibido no momento: "Nome → valor °C status".
+function OtherDeviceSummary({ item }) {
+  const status = getDeviceStatus(item.device.lastSeenAt);
+  return (
+    <p>
+      <span className="font-medium text-slate-700 dark:text-slate-200">{item.device.name}</span>
+      <span className="mx-1 text-slate-400 dark:text-slate-500">→</span>
+      <span>{item.measurement ? `${formatNumber(item.measurement.temperature)} °C` : 'sem leitura'}</span>
+      <span className="ml-1">{status.dot}</span>
+    </p>
   );
 }
