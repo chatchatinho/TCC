@@ -1,0 +1,249 @@
+openapi: 3.0.3
+info:
+  title: API — Monitoramento de Temperatura e Umidade (TCC)
+  version: "1.0.0"
+  description: >
+    API REST que recebe medições de dispositivos ESP32, autentica usuários e
+    expõe dashboard, histórico e alertas. Documentação completa da arquitetura
+    em /docs/01-arquitetura-e-decisoes.md no repositório.
+servers:
+  - url: /api
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+    deviceKey:
+      type: apiKey
+      in: header
+      name: X-Device-Key
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        email: { type: string, format: email }
+        birthDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+    Device:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        deviceIdentifier: { type: string, example: ESP32-001 }
+        name: { type: string }
+        active: { type: boolean }
+        lastSeenAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    Settings:
+      type: object
+      properties:
+        idealTemperature: { type: number }
+        temperatureTolerance: { type: number }
+        idealHumidity: { type: number }
+        humidityTolerance: { type: number }
+    Alert:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        variable: { type: string, enum: [temperature, humidity] }
+        direction: { type: string, enum: [above_max, below_min] }
+        peakValue: { type: number }
+        limitMin: { type: number }
+        limitMax: { type: number }
+        startedAt: { type: string, format: date-time }
+        endedAt: { type: string, format: date-time, nullable: true }
+        status: { type: string, enum: [active, resolved] }
+        readAt: { type: string, format: date-time, nullable: true }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        details: { type: object, nullable: true }
+paths:
+  /auth/register:
+    post:
+      summary: Cadastra um novo usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName, email, password, birthDate]
+              properties:
+                fullName: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+                birthDate: { type: string, format: date }
+      responses:
+        "201": { description: Usuário criado, sessão iniciada (cookie) }
+        "400": { description: Dados inválidos, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: E-mail já cadastrado }
+  /auth/login:
+    post:
+      summary: Autentica um usuário
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, format: password }
+      responses:
+        "200": { description: Login bem-sucedido, sessão iniciada (cookie) }
+        "401": { description: Credenciais inválidas }
+  /auth/logout:
+    post:
+      summary: Encerra a sessão atual
+      responses:
+        "204": { description: Sessão encerrada }
+  /auth/me:
+    get:
+      summary: Retorna o usuário autenticado
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+        "401": { description: Não autenticado }
+  /users/me:
+    get:
+      summary: Perfil do usuário autenticado
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+    put:
+      summary: Atualiza o perfil (nome completo)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+  /settings:
+    get:
+      summary: Retorna as configurações de temperatura/umidade do usuário (cria padrão se não existir)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+    put:
+      summary: Atualiza os valores ideais e margens de tolerância
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Settings" }
+      responses:
+        "200": { description: OK }
+  /devices:
+    get:
+      summary: Lista os dispositivos do usuário
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+    post:
+      summary: Cadastra um novo dispositivo (retorna o token/segredo em texto puro UMA VEZ)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "201": { description: Criado }
+  /devices/{id}:
+    put:
+      summary: Atualiza nome/ativo de um dispositivo do usuário
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Dispositivo não encontrado }
+    delete:
+      summary: Remove um dispositivo do usuário (e seu histórico, em cascata)
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "204": { description: Removido }
+  /devices/{id}/rotate-secret:
+    post:
+      summary: Gera um novo token de API para o dispositivo, invalidando o anterior
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+  /measurements:
+    post:
+      summary: Recebe uma leitura enviada pelo ESP32 (autenticação de dispositivo, não de usuário)
+      security: [{ deviceKey: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, temperature, humidity]
+              properties:
+                device_id: { type: string, example: ESP32-001 }
+                temperature: { type: number, example: 25.4 }
+                humidity: { type: number, example: 61.2 }
+                timestamp: { type: string, format: date-time }
+      responses:
+        "201": { description: Medição registrada }
+        "401": { description: Dispositivo não autorizado }
+  /measurements/latest:
+    get:
+      summary: Última leitura de cada dispositivo do usuário (alimenta o dashboard)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+  /measurements/simulate:
+    post:
+      summary: Injeta uma leitura simulada em um dispositivo próprio (demonstração sem hardware)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "201": { description: Medição simulada registrada }
+  /history:
+    get:
+      summary: Histórico paginado de medições com filtros
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: deviceId, in: query, schema: { type: string } }
+        - { name: dateFrom, in: query, schema: { type: string, format: date-time } }
+        - { name: dateTo, in: query, schema: { type: string, format: date-time } }
+        - { name: temperatureMin, in: query, schema: { type: number } }
+        - { name: temperatureMax, in: query, schema: { type: number } }
+        - { name: humidityMin, in: query, schema: { type: number } }
+        - { name: humidityMax, in: query, schema: { type: number } }
+        - { name: status, in: query, schema: { type: string, enum: [normal, out_of_range] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        "200": { description: OK }
+  /history/export:
+    get:
+      summary: Exporta o histórico filtrado em CSV (máximo 5000 linhas)
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200":
+          description: Arquivo CSV
+          content:
+            text/csv: {}
+  /alerts:
+    get:
+      summary: Lista os alertas do usuário
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [active, resolved] } }
+        - { name: page, in: query, schema: { type: integer, default: 1 } }
+        - { name: pageSize, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        "200": { description: OK }
+  /alerts/summary:
+    get:
+      summary: Contagem de alertas não lidos desde o último acesso
+      security: [{ sessionCookie: [] }]
+      responses:
+        "200": { description: OK }
+  /alerts/{id}/read:
+    patch:
+      summary: Marca um alerta como lido
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
