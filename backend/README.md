@@ -108,6 +108,36 @@ src/
 injetar uma leitura em qualquer dispositivo do próprio usuário — útil para demonstrar o fluxo
 completo (medição → dashboard → histórico → alerta) mesmo sem hardware conectado.
 
+## Testes automatizados
+
+```bash
+# 1. Crie um banco SEPARADO para testes (nunca reaproveite o de desenvolvimento —
+#    os testes fazem TRUNCATE nas tabelas entre casos):
+psql -U tcc_dev -h localhost -c "CREATE DATABASE tcc_test OWNER tcc_dev;"
+
+# 2. Copie .env.test.example para .env.test e ajuste a senha se necessário
+
+# 3. Aplique as migrations nesse banco:
+DATABASE_URL="postgresql://tcc_dev:sua_senha@localhost:5432/tcc_test" npx prisma migrate deploy
+
+# 4. Rode a suíte:
+npm test
+```
+
+Cobre cadastro (válido, e-mail duplicado, e-mail inválido, senha fraca, data de
+nascimento no futuro), login (credenciais corretas/incorretas, mensagem genérica sem
+revelar qual campo errou), isolamento entre usuários (usuário A nunca acessa dados de
+B — sempre 404), ingestão de medições (válida, token incorreto, dispositivo
+inexistente/desativado, dados fisicamente implausíveis), o motor de alertas (dentro do
+limite, acima, abaixo, múltiplas leituras seguidas fora do limite gerando um único
+evento com o pico atualizado — não um alerta por leitura —, fechamento ao normalizar,
+reabertura como evento novo), configurações (cálculo dos limites, valores incoerentes
+rejeitados) e histórico (filtros por status/período, paginação sem sobreposição entre
+páginas, exportação CSV). O rate limiting é testado à parte
+(`tests/security/rateLimit.test.js`) com uma instância isolada do limitador, já que os
+limitadores reais da aplicação ficam desligados durante os testes (`NODE_ENV=test`) para
+não interferir entre arquivos que rodam em série no mesmo processo.
+
 ### Exemplo de fluxo via curl
 
 ```bash
