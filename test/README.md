@@ -30,7 +30,7 @@ isolamento entre usuários).
 ## Estrutura
 
 ```
-teste/
+test/
 ├── database/schema.sql   Schema do MySQL (tabelas + índices)
 ├── backend/               API REST em PHP — ver backend/README.md
 ├── app/                   App Flutter (Dart) — ver app/README.md
