@@ -15,6 +15,7 @@ Documentação completa em [`docs/`](docs/):
 - [`docs/documentacao/08-para-que-serve-cada-coisa.md`](docs/documentacao/08-para-que-serve-cada-coisa.md) — complemento do guia acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
 - [`docs/documentacao/06-guia-teste-arduino-real.md`](docs/documentacao/06-guia-teste-arduino-real.md) — testando com um ESP32 físico + sensor DHT11 (fiação, Arduino IDE, firmware)
 - [`docs/documentacao/07-metodologia-tcc.md`](docs/documentacao/07-metodologia-tcc.md) — texto de apoio para o TCC (introdução, objetivos, metodologia)
+- [`docs/documentacao/09-aula-completa-do-sistema.md`](docs/documentacao/09-aula-completa-do-sistema.md) — aula completa de como o sistema funciona por dentro (arquitetura, banco de dados, backend, frontend, firmware, testes), para estudo antes da apresentação
 
 ## Funcionalidades
 

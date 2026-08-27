@@ -3,7 +3,7 @@
 > Verificação de coerência ponta a ponta: ESP32 (formato de requisição) → API → Banco →
 > Dashboard → Histórico → Alertas. As Etapas 2-5 já foram testadas individualmente e de
 > ponta a ponta (backend real + Postgres real na Etapa 3, backend + frontend reais com
-> Playwright na Etapa 4); esta etapa fecha o círculo confirmando que o **formato exato**
+> verificação manual em navegador na Etapa 4); esta etapa fecha o círculo confirmando que o **formato exato**
 > das requisições que o firmware (Etapa 5) produz é aceito e processado corretamente pela
 > API, sem precisar do hardware físico.
 
@@ -59,7 +59,7 @@ já testado.
 ## Fluxo completo demonstrável (seção 49 do escopo)
 
 Com as Etapas 1-6 concluídas, o fluxo de demonstração para a banca está implementado e
-verificado de ponta a ponta (via Playwright na Etapa 4, e via requisições no formato do
+verificado de ponta a ponta (via verificação manual em navegador na Etapa 4, e via requisições no formato do
 firmware nesta etapa): cadastro → login → dashboard → gráficos → alterar limites →
 gerar leitura fora do limite (real via ESP32, ou simulada via botão no dashboard) →
 alerta gerado → logout → login → notificação do alerta → histórico → filtro → dado do

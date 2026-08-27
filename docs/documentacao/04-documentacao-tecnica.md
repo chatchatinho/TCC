@@ -329,6 +329,6 @@ completo (cadastro → login → dashboard → alertas → histórico) funciona 
 cadastro, login, isolamento entre usuários, ingestão de medições, o motor de alertas
 (incluindo a lógica anti-spam) e histórico — ver
 [`backend/README.md`](../../backend/README.md#testes-automatizados) para como rodar.
-Testes end-to-end manuais (Playwright, navegador real) do fluxo completo do usuário
-estão documentados como parte do processo de desenvolvimento (Etapas 4 e 6 do
-histórico de commits do projeto).
+Verificações end-to-end manuais (navegador real) do fluxo completo do usuário estão
+documentadas como parte do processo de desenvolvimento (Etapas 4 e 6 do histórico de
+commits do projeto) — não fazem parte de uma suíte automatizada no repositório.
