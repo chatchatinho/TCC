@@ -1,0 +1,7 @@
+# Usado só quando o backend roda em Apache (ex.: XAMPP).
+# Encaminha toda requisição que não seja um arquivo real para o index.php.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>

@@ -1,0 +1,57 @@
+<?php
+
+/**
+ * Abre (e reaproveita) uma única conexão PDO com o MySQL, lendo as
+ * credenciais do arquivo .env na raiz de backend/.
+ */
+class Database
+{
+    private static ?PDO $connection = null;
+
+    public static function getConnection(): PDO
+    {
+        if (self::$connection === null) {
+            self::loadEnv();
+
+            $host = getenv('DB_HOST') ?: '127.0.0.1';
+            $port = getenv('DB_PORT') ?: '3306';
+            $name = getenv('DB_NAME') ?: 'tcc_teste';
+            $user = getenv('DB_USER') ?: 'root';
+            $pass = getenv('DB_PASS') ?: '';
+
+            $dsn = "mysql:host={$host};port={$port};dbname={$name};charset=utf8mb4";
+
+            try {
+                self::$connection = new PDO($dsn, $user, $pass, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                ]);
+            } catch (PDOException $e) {
+                Response::error('Não foi possível conectar ao banco de dados. Confira o arquivo .env.', 500);
+            }
+        }
+
+        return self::$connection;
+    }
+
+    private static function loadEnv(): void
+    {
+        $path = __DIR__ . '/../.env';
+        if (!file_exists($path)) {
+            return;
+        }
+
+        foreach (file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+            $line = trim($line);
+            if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+                continue;
+            }
+            [$key, $value] = explode('=', $line, 2);
+            $key = trim($key);
+            $value = trim($value);
+            if (getenv($key) === false) {
+                putenv("{$key}={$value}");
+            }
+        }
+    }
+}
