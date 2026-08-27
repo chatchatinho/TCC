@@ -70,6 +70,8 @@ git checkout claude/esp32-temp-humidity-monitoring-k1kgji
 
 Agora abra a pasta no VS Code: **File → Open Folder** → selecione `Desktop\Software`.
 
+USE: **cd TCC depois git checkout claude/esp32-temp-humidity-monitoring-k1kgji**
+
 ## 7. Criar o banco de dados do projeto
 
 Abra o programa **"SQL Shell (psql)"** pelo menu Iniciar do Windows (não é no VS Code,
