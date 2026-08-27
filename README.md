@@ -12,6 +12,7 @@ Documentação completa em [`docs/`](docs/):
 - [`docs/03-seguranca.md`](docs/03-seguranca.md) — revisão de segurança
 - [`docs/04-documentacao-tecnica.md`](docs/04-documentacao-tecnica.md) — documentação técnica completa (com diagramas)
 - [`docs/05-guia-teste-iniciante.md`](docs/05-guia-teste-iniciante.md) — instalação passo a passo para quem nunca configurou um ambiente de desenvolvimento (Windows, do zero)
+- [`docs/08-para-que-serve-cada-coisa.md`](docs/08-para-que-serve-cada-coisa.md) — complemento do guia acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
 - [`docs/06-guia-teste-arduino-real.md`](docs/06-guia-teste-arduino-real.md) — testando com um ESP32 físico + sensor DHT11 (fiação, Arduino IDE, firmware)
 
 ## Funcionalidades
