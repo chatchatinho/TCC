@@ -17,6 +17,7 @@ Documentação completa em [`docs/`](docs/):
 - [`docs/documentacao/07-metodologia-tcc.md`](docs/documentacao/07-metodologia-tcc.md) — texto de apoio para o TCC (introdução, objetivos, metodologia)
 - [`docs/documentacao/09-aula-completa-do-sistema.md`](docs/documentacao/09-aula-completa-do-sistema.md) — aula completa de como o sistema funciona por dentro (arquitetura, banco de dados, backend, frontend, firmware, testes), para estudo antes da apresentação
 - [`docs/documentacao/10-cada-pasta-e-arquivo-explicado.md`](docs/documentacao/10-cada-pasta-e-arquivo-explicado.md) — mapa de referência de cada pasta e cada arquivo do repositório, um por um
+- [`docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md`](docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md) — versão resumida do mapa acima, para ler em 5 minutos
 
 ## Funcionalidades
 
