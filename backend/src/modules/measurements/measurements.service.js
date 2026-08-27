@@ -5,7 +5,7 @@ const alertsService = require('../alerts/alerts.service');
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // 5 minutos de tolerância para relógio do ESP32
 const MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 1 ano
 
-// O ESP32 pode não ter NTP configurado (ver riscos técnicos, docs/01-arquitetura-e-decisoes.md).
+// O ESP32 pode não ter NTP configurado (ver riscos técnicos, docs/documentacao/01-arquitetura-e-decisoes.md).
 // Se o timestamp enviado for ausente, inválido, ou implausível (muito no futuro/passado),
 // usa o horário do servidor como received_at/measured_at em vez de rejeitar a leitura.
 function resolveMeasuredAt(timestamp) {

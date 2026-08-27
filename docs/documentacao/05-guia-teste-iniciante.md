@@ -5,7 +5,7 @@
 > Este guia usa o caminho manual (Node.js + PostgreSQL) em vez de Docker, porque muitas
 > máquinas Windows não têm virtualização habilitada por padrão — o que faz o Docker
 > Desktop falhar. Se você já sabe que sua máquina roda Docker sem problemas, veja a
-> alternativa mais curta na seção "Opção A — Docker" do [`README.md`](../README.md).
+> alternativa mais curta na seção "Opção A — Docker" do [`README.md`](../../README.md).
 
 ## O que você vai instalar (nessa ordem)
 

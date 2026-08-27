@@ -52,7 +52,7 @@ src/
 - **Autenticação por cookie httpOnly**: o axios usa `withCredentials: true`; não há token
   manipulado em JavaScript/localStorage (mitiga XSS).
 - **Atualização por polling (10s)**, não WebSocket/SSE — decisão registrada em
-  `../docs/01-arquitetura-e-decisoes.md`, adequada ao volume de dados de um TCC.
+  `../docs/documentacao/01-arquitetura-e-decisoes.md`, adequada ao volume de dados de um TCC.
 - **Simulação automática sem hardware, para todos os dispositivos em segundo plano**: o
   Dashboard chama `POST /api/measurements/simulate` sozinho, a cada 2s, para cada
   dispositivo do usuário — não só o selecionado na tela no momento — sem botão manual.

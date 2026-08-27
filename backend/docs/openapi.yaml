@@ -5,7 +5,7 @@ info:
   description: >
     API REST que recebe medições de dispositivos ESP32, autentica usuários e
     expõe dashboard, histórico e alertas. Documentação completa da arquitetura
-    em /docs/01-arquitetura-e-decisoes.md no repositório.
+    em /docs/documentacao/01-arquitetura-e-decisoes.md no repositório.
 servers:
   - url: /api
 components:

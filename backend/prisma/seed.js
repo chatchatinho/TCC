@@ -89,7 +89,7 @@ async function main() {
   }
 
   // Cria o alerta correspondente à janela de anomalia simulada acima, já resolvido,
-  // seguindo o modelo de "evento" descrito em docs/01-arquitetura-e-decisoes.md.
+  // seguindo o modelo de "evento" descrito em docs/documentacao/01-arquitetura-e-decisoes.md.
   const anomalyStart = readings[totalReadings - 1 - 18].measuredAt;
   const anomalyEnd = readings[totalReadings - 1 - 14].measuredAt;
   const triggeringMeasurement = await prisma.measurement.findFirst({

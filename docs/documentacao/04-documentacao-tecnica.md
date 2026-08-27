@@ -71,7 +71,7 @@ O firmware (`esp32/firmware/firmware.ino`) segue este ciclo:
 6. Se o Wi-Fi cair, tenta reconectar periodicamente (não bloqueia o restante do loop
    indefinidamente).
 
-Detalhes de fiação, bibliotecas e configuração em [`esp32/README.md`](../esp32/README.md).
+Detalhes de fiação, bibliotecas e configuração em [`esp32/README.md`](../../esp32/README.md).
 
 ## 5. Comunicação ESP32 → API
 
@@ -108,7 +108,7 @@ comparado por hash (nunca em texto puro) contra `devices.device_secret_hash`.
 API REST organizada em módulos por domínio (`auth`, `users`, `devices`, `measurements`,
 `settings`, `alerts`, `history`), cada um com `routes.js` (rotas + validação) e
 `service.js` (lógica de negócio + acesso ao Prisma). Lista completa de endpoints e
-schemas em [`docs/openapi.yaml`](../backend/docs/openapi.yaml) (Swagger UI em
+schemas em [`docs/openapi.yaml`](../../backend/docs/openapi.yaml) (Swagger UI em
 `/api/docs` com o servidor rodando).
 
 Fluxo comum de uma requisição privada:
@@ -301,13 +301,13 @@ hardcoded (tudo via variáveis de ambiente).
 
 ## 13. Instalação
 
-Ver [`README.md`](../README.md#instalação-e-execução) na raiz do repositório — passo a
+Ver [`README.md`](../../README.md#instalação-e-execução) na raiz do repositório — passo a
 passo de banco, backend, frontend e ESP32.
 
 ## 14. Configuração
 
 Todas as variáveis de ambiente (backend, frontend) e de firmware (`config.h`) estão
-documentadas em [`README.md`](../README.md#variáveis-de-ambiente) e nos respectivos
+documentadas em [`README.md`](../../README.md#variáveis-de-ambiente) e nos respectivos
 `.env.example`/`config.example.h`. Nenhum valor real é commitado.
 
 ## 15. Execução
@@ -328,7 +328,7 @@ completo (cadastro → login → dashboard → alertas → histórico) funciona 
 54 testes automatizados (Jest + Supertest) contra um banco de teste real, cobrindo
 cadastro, login, isolamento entre usuários, ingestão de medições, o motor de alertas
 (incluindo a lógica anti-spam) e histórico — ver
-[`backend/README.md`](../backend/README.md#testes-automatizados) para como rodar.
+[`backend/README.md`](../../backend/README.md#testes-automatizados) para como rodar.
 Testes end-to-end manuais (Playwright, navegador real) do fluxo completo do usuário
 estão documentados como parte do processo de desenvolvimento (Etapas 4 e 6 do
 histórico de commits do projeto).

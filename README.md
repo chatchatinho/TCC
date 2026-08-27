@@ -7,13 +7,14 @@ alertas automáticos quando os valores saem da faixa configurada.
 
 Documentação completa em [`docs/`](docs/):
 
-- [`docs/01-arquitetura-e-decisoes.md`](docs/01-arquitetura-e-decisoes.md) — arquitetura, stack, modelo de dados, decisões
-- [`docs/02-integracao.md`](docs/02-integracao.md) — verificação de integração ponta a ponta
-- [`docs/03-seguranca.md`](docs/03-seguranca.md) — revisão de segurança
-- [`docs/04-documentacao-tecnica.md`](docs/04-documentacao-tecnica.md) — documentação técnica completa (com diagramas)
-- [`docs/05-guia-teste-iniciante.md`](docs/05-guia-teste-iniciante.md) — instalação passo a passo para quem nunca configurou um ambiente de desenvolvimento (Windows, do zero)
-- [`docs/08-para-que-serve-cada-coisa.md`](docs/08-para-que-serve-cada-coisa.md) — complemento do guia acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
-- [`docs/06-guia-teste-arduino-real.md`](docs/06-guia-teste-arduino-real.md) — testando com um ESP32 físico + sensor DHT11 (fiação, Arduino IDE, firmware)
+- [`docs/documentacao/01-arquitetura-e-decisoes.md`](docs/documentacao/01-arquitetura-e-decisoes.md) — arquitetura, stack, modelo de dados, decisões
+- [`docs/documentacao/02-integracao.md`](docs/documentacao/02-integracao.md) — verificação de integração ponta a ponta
+- [`docs/documentacao/03-seguranca.md`](docs/documentacao/03-seguranca.md) — revisão de segurança
+- [`docs/documentacao/04-documentacao-tecnica.md`](docs/documentacao/04-documentacao-tecnica.md) — documentação técnica completa (com diagramas)
+- [`docs/documentacao/05-guia-teste-iniciante.md`](docs/documentacao/05-guia-teste-iniciante.md) — instalação passo a passo para quem nunca configurou um ambiente de desenvolvimento (Windows, do zero)
+- [`docs/documentacao/08-para-que-serve-cada-coisa.md`](docs/documentacao/08-para-que-serve-cada-coisa.md) — complemento do guia acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
+- [`docs/documentacao/06-guia-teste-arduino-real.md`](docs/documentacao/06-guia-teste-arduino-real.md) — testando com um ESP32 físico + sensor DHT11 (fiação, Arduino IDE, firmware)
+- [`docs/documentacao/07-metodologia-tcc.md`](docs/documentacao/07-metodologia-tcc.md) — texto de apoio para o TCC (introdução, objetivos, metodologia)
 
 ## Funcionalidades
 
@@ -70,7 +71,7 @@ Documentação completa em [`docs/`](docs/):
 | Firmware | ESP32 (Arduino), DHT11, ArduinoJson, HTTPClient |
 | Testes | Jest + Supertest (backend) |
 
-Justificativas detalhadas em [`docs/01-arquitetura-e-decisoes.md`](docs/01-arquitetura-e-decisoes.md).
+Justificativas detalhadas em [`docs/documentacao/01-arquitetura-e-decisoes.md`](docs/documentacao/01-arquitetura-e-decisoes.md).
 
 ## Requisitos
 
@@ -212,7 +213,7 @@ GET    /api/devices                 GET    /api/alerts/summary
 ```
 
 Documentação interativa (Swagger UI) em `http://localhost:3000/api/docs` com o backend
-rodando. Lista completa e exemplos em [`docs/04-documentacao-tecnica.md`](docs/04-documentacao-tecnica.md).
+rodando. Lista completa e exemplos em [`docs/documentacao/04-documentacao-tecnica.md`](docs/documentacao/04-documentacao-tecnica.md).
 
 ## Testes automatizados
 

@@ -35,7 +35,7 @@ npm run prisma:migrate
 
 Cria/atualiza as tabelas `users`, `devices`, `measurements`, `settings` e `alerts` conforme
 `prisma/schema.prisma`. O modelo completo e as decisões de modelagem estão documentados em
-`../docs/01-arquitetura-e-decisoes.md`.
+`../docs/documentacao/01-arquitetura-e-decisoes.md`.
 
 ## Populando dados de demonstração
 
