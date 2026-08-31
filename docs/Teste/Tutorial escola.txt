@@ -57,3 +57,5 @@ cd frontend
 copy .env.example .env
 npm install
 npm run dev
+
+http://localhost:5173
