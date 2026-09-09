@@ -1,16 +1,16 @@
 const prisma = require('../../lib/prisma');
 
-async function getOrCreate(userId) {
-  const existing = await prisma.setting.findUnique({ where: { userId } });
+async function getOrCreate(deviceId) {
+  const existing = await prisma.setting.findUnique({ where: { deviceId } });
   if (existing) return existing;
-  return prisma.setting.create({ data: { userId } });
+  return prisma.setting.create({ data: { deviceId } });
 }
 
-async function update(userId, data) {
+async function update(deviceId, data) {
   return prisma.setting.upsert({
-    where: { userId },
+    where: { deviceId },
     update: data,
-    create: { userId, ...data },
+    create: { deviceId, ...data },
   });
 }
 

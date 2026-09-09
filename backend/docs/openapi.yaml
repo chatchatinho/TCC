@@ -39,10 +39,17 @@ components:
     Settings:
       type: object
       properties:
+        deviceId: { type: string, format: uuid }
         idealTemperature: { type: number }
         temperatureTolerance: { type: number }
+        temperatureMin: { type: number, nullable: true }
+        temperatureMax: { type: number, nullable: true }
         idealHumidity: { type: number }
         humidityTolerance: { type: number }
+        humidityMin: { type: number, nullable: true }
+        humidityMax: { type: number, nullable: true }
+        notifyTemperature: { type: boolean }
+        notifyHumidity: { type: boolean }
     Alert:
       type: object
       properties:
@@ -120,21 +127,6 @@ paths:
       security: [{ sessionCookie: [] }]
       responses:
         "200": { description: OK }
-  /settings:
-    get:
-      summary: Retorna as configurações de temperatura/umidade do usuário (cria padrão se não existir)
-      security: [{ sessionCookie: [] }]
-      responses:
-        "200": { description: OK }
-    put:
-      summary: Atualiza os valores ideais e margens de tolerância
-      security: [{ sessionCookie: [] }]
-      requestBody:
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/Settings" }
-      responses:
-        "200": { description: OK }
   /devices:
     get:
       summary: Lista os dispositivos do usuário
@@ -167,6 +159,25 @@ paths:
       parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
         "200": { description: OK }
+  /devices/{id}/settings:
+    get:
+      summary: Retorna as configurações de temperatura/umidade de um dispositivo do usuário (cria padrão se não existir)
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Dispositivo não encontrado }
+    put:
+      summary: Atualiza os valores ideais e margens de tolerância de um dispositivo do usuário
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Settings" }
+      responses:
+        "200": { description: OK }
+        "404": { description: Dispositivo não encontrado }
   /measurements:
     post:
       summary: Recebe uma leitura enviada pelo ESP32 (autenticação de dispositivo, não de usuário)

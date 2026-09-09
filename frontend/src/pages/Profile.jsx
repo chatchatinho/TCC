@@ -208,17 +208,23 @@ function ExportDataSection() {
     setError('');
     setExporting(true);
     try {
-      const [devices, settingsData, alertsData] = await Promise.all([
+      const [devices, alertsData] = await Promise.all([
         devicesService.listDevices(),
-        settingsService.getSettings(),
         alertsService.listAlerts({ pageSize: 100 }),
       ]);
+
+      const settingsByDevice = await Promise.all(
+        devices.map(async (device) => {
+          const { settings } = await settingsService.getSettings(device.id);
+          return { deviceId: device.id, ...settings };
+        }),
+      );
 
       const payload = {
         exportedAt: new Date().toISOString(),
         perfil: user,
         dispositivos: devices,
-        configuracoes: settingsData.settings,
+        configuracoes: settingsByDevice,
         notificacoes: alertsData.alerts,
       };
 

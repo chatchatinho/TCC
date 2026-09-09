@@ -37,7 +37,7 @@ async function create(device, { temperature, humidity, timestamp }, { source = '
     data: source === 'real' ? { lastSeenAt: now, lastRealMeasurementAt: now } : { lastSeenAt: now },
   });
 
-  const settings = await settingsService.getOrCreate(device.userId);
+  const settings = await settingsService.getOrCreate(device.id);
   const thresholds = settingsService.computeThresholds(settings);
   const notifyFlags = { temperature: settings.notifyTemperature, humidity: settings.notifyHumidity };
   await alertsService.evaluateMeasurement(measurement, device, thresholds, notifyFlags);

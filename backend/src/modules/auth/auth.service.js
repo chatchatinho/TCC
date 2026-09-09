@@ -32,7 +32,6 @@ async function register({ fullName, email, password, birthDate }) {
       email,
       passwordHash,
       birthDate: new Date(birthDate),
-      settings: { create: {} }, // valores padrão definidos no schema
     },
   });
 

@@ -35,14 +35,6 @@ async function main() {
       email: TEST_USER_EMAIL,
       passwordHash,
       birthDate: new Date('2000-01-15'),
-      settings: {
-        create: {
-          idealTemperature: 25,
-          temperatureTolerance: 2,
-          idealHumidity: 60,
-          humidityTolerance: 10,
-        },
-      },
     },
   });
 
@@ -57,6 +49,14 @@ async function main() {
       userId: user.id,
       active: true,
       lastSeenAt: new Date(),
+      settings: {
+        create: {
+          idealTemperature: 25,
+          temperatureTolerance: 2,
+          idealHumidity: 60,
+          humidityTolerance: 10,
+        },
+      },
     },
   });
 

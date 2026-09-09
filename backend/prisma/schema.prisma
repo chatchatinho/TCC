@@ -35,7 +35,6 @@ model User {
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   devices  Device[]
-  settings Setting?
   alerts   Alert[]
 
   @@map("users")
@@ -59,6 +58,7 @@ model Device {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   measurements Measurement[]
   alerts       Alert[]
+  settings     Setting?
 
   @@index([userId])
   @@map("devices")
@@ -80,9 +80,12 @@ model Measurement {
   @@map("measurements")
 }
 
+// Cada dispositivo tem sua própria configuração de limites — dois sensores do mesmo
+// usuário podem monitorar ambientes bem diferentes (ex.: uma estufa e uma geladeira),
+// então não faz sentido uma única faixa "universal" valer para todos os dispositivos.
 model Setting {
   id                   String   @id @default(uuid())
-  userId               String   @unique @map("user_id")
+  deviceId             String   @unique @map("device_id")
   idealTemperature     Decimal  @default(25) @map("ideal_temperature") @db.Decimal(5, 2)
   temperatureTolerance Decimal  @default(2) @map("temperature_tolerance") @db.Decimal(5, 2)
   // Taxa mínima/máxima de temperatura, opcionais: quando definidas, substituem o
@@ -103,7 +106,7 @@ model Setting {
   notifyHumidity       Boolean  @default(true) @map("notify_humidity")
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 
   @@map("settings")
 }

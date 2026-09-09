@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import * as settingsService from '../services/settings';
+import * as devicesService from '../services/devices';
 import { parseDecimal, isValidDecimal, isValidOptionalDecimal } from '../utils/number';
 import { useTheme } from '../context/ThemeContext';
 
@@ -59,6 +61,8 @@ function computeRange(ideal, tolerance, min, max, clampToPercent) {
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('values');
+  const [devices, setDevices] = useState(null);
+  const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [form, setForm] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -76,8 +80,22 @@ export default function Settings() {
     toggleReducedMotion,
   } = useTheme();
 
+  // Cada dispositivo tem sua própria configuração de limites — carrega a lista de
+  // dispositivos primeiro e assume o primeiro como selecionado, mesmo comportamento
+  // do seletor de dispositivo do Dashboard para quem só tem um cadastrado.
   useEffect(() => {
-    settingsService.getSettings().then(({ settings }) => {
+    devicesService.listDevices().then((list) => {
+      setDevices(list);
+      if (list.length > 0) setSelectedDeviceId(list[0].id);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedDeviceId) return;
+    setForm(null);
+    setError('');
+    setSuccess(false);
+    settingsService.getSettings(selectedDeviceId).then(({ settings }) => {
       setForm({
         idealTemperature: toFormString(settings.idealTemperature),
         temperatureTolerance: toFormString(settings.temperatureTolerance),
@@ -91,7 +109,7 @@ export default function Settings() {
         notifyHumidity: settings.notifyHumidity,
       });
     });
-  }, []);
+  }, [selectedDeviceId]);
 
   function update(field) {
     return (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }));
@@ -159,7 +177,7 @@ export default function Settings() {
       for (const field of REQUIRED_FIELDS) payload[field] = parseDecimal(form[field]);
       for (const field of OPTIONAL_FIELDS) payload[field] = form[field] === '' ? null : parseDecimal(form[field]);
 
-      await settingsService.updateSettings(payload);
+      await settingsService.updateSettings(selectedDeviceId, payload);
       setSuccess(true);
     } catch (err) {
       const details = err.response?.data?.details;
@@ -170,7 +188,7 @@ export default function Settings() {
     }
   }
 
-  if (!form) {
+  if (!devices) {
     return (
       <Layout>
         <p className="text-slate-500 dark:text-slate-400">Carregando…</p>
@@ -180,7 +198,25 @@ export default function Settings() {
 
   return (
     <Layout>
-      <h1 className="mb-6 text-2xl font-semibold text-slate-900 dark:text-slate-100">Configurações</h1>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Configurações</h1>
+        {devices.length > 1 && (
+          <label className="text-sm text-slate-500 dark:text-slate-400">
+            Dispositivo
+            <select
+              value={selectedDeviceId ?? ''}
+              onChange={(e) => setSelectedDeviceId(e.target.value)}
+              className="ml-2 rounded-md border border-slate-300 bg-white px-2 py-1 text-sm text-slate-700 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+            >
+              {devices.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
 
       <div className="mb-6 flex flex-wrap gap-2">
         {TABS.map((tab) => (
@@ -199,7 +235,20 @@ export default function Settings() {
         ))}
       </div>
 
-      {activeTab === 'values' && (
+      {activeTab === 'values' && devices.length === 0 && (
+        <div className="max-w-3xl rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-600 dark:bg-slate-800">
+          <p className="text-slate-600 dark:text-slate-300">Nenhum dispositivo cadastrado ainda.</p>
+          <Link to="/devices" className="mt-3 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+            Cadastrar dispositivo
+          </Link>
+        </div>
+      )}
+
+      {activeTab === 'values' && devices.length > 0 && !form && (
+        <p className="text-slate-500 dark:text-slate-400">Carregando…</p>
+      )}
+
+      {activeTab === 'values' && devices.length > 0 && form && (
         <form onSubmit={handleSubmit} className="max-w-3xl">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <VariableSection

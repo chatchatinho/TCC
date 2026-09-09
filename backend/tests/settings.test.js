@@ -12,24 +12,40 @@ function payload(overrides) {
   return { notifyTemperature: true, notifyHumidity: true, ...overrides };
 }
 
-describe('GET /api/settings', () => {
-  test('usuário recém-cadastrado já tem configurações padrão', async () => {
-    const { agent } = await registerAndLogin();
+// Cada dispositivo tem sua própria configuração de limites — os testes precisam de um
+// dispositivo cadastrado antes de ler/alterar suas configurações.
+async function registerWithDevice(overrides = {}) {
+  const auth = await registerAndLogin(overrides);
+  const deviceRes = await auth.agent.post('/api/devices').send({ name: 'Sensor de Teste' });
+  return { ...auth, device: deviceRes.body.device, deviceSecret: deviceRes.body.deviceSecret };
+}
 
-    const res = await agent.get('/api/settings');
+describe('GET /api/devices/:id/settings', () => {
+  test('dispositivo recém-cadastrado já tem configurações padrão', async () => {
+    const { agent, device } = await registerWithDevice();
+
+    const res = await agent.get(`/api/devices/${device.id}/settings`);
 
     expect(res.status).toBe(200);
     expect(res.body.thresholds).toEqual({ temperature: { min: 23, max: 27 }, humidity: { min: 50, max: 70 } });
     expect(res.body.settings.notifyTemperature).toBe(true);
     expect(res.body.settings.notifyHumidity).toBe(true);
   });
+
+  test('retorna 404 para um device_id inexistente', async () => {
+    const { agent } = await registerWithDevice();
+
+    const res = await agent.get('/api/devices/00000000-0000-0000-0000-000000000000/settings');
+
+    expect(res.status).toBe(404);
+  });
 });
 
-describe('PUT /api/settings', () => {
+describe('PUT /api/devices/:id/settings', () => {
   test('valores válidos são salvos e os limites recalculados', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 22,
         temperatureTolerance: 3,
@@ -44,9 +60,9 @@ describe('PUT /api/settings', () => {
   });
 
   test('umidade fora de 0-100 é rejeitada com 400', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 22,
         temperatureTolerance: 3,
@@ -59,9 +75,9 @@ describe('PUT /api/settings', () => {
   });
 
   test('margem de tolerância zero é rejeitada com 400 (incoerente)', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 22,
         temperatureTolerance: 0,
@@ -74,9 +90,9 @@ describe('PUT /api/settings', () => {
   });
 
   test('limites de umidade calculados nunca ultrapassam 0-100%, mesmo com margem grande', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 25,
         temperatureTolerance: 2,
@@ -90,9 +106,9 @@ describe('PUT /api/settings', () => {
   });
 
   test('rejeita com 400 se notifyTemperature/notifyHumidity estiverem ausentes', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send({
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send({
       idealTemperature: 25,
       temperatureTolerance: 2,
       idealHumidity: 60,
@@ -101,13 +117,42 @@ describe('PUT /api/settings', () => {
 
     expect(res.status).toBe(400);
   });
+
+  test('retorna 404 para um device_id inexistente', async () => {
+    const { agent } = await registerWithDevice();
+
+    const res = await agent
+      .put('/api/devices/00000000-0000-0000-0000-000000000000/settings')
+      .send(payload({ idealTemperature: 25, temperatureTolerance: 2, idealHumidity: 60, humidityTolerance: 10 }));
+
+    expect(res.status).toBe(404);
+  });
+
+  test('cada dispositivo mantém sua própria configuração, independente dos demais', async () => {
+    const { agent, device: deviceA } = await registerWithDevice();
+    const deviceBRes = await agent.post('/api/devices').send({ name: 'Segundo Sensor' });
+    const deviceB = deviceBRes.body.device;
+
+    await agent.put(`/api/devices/${deviceA.id}/settings`).send(
+      payload({ idealTemperature: 15, temperatureTolerance: 1, idealHumidity: 40, humidityTolerance: 5 }),
+    );
+    await agent.put(`/api/devices/${deviceB.id}/settings`).send(
+      payload({ idealTemperature: 30, temperatureTolerance: 4, idealHumidity: 70, humidityTolerance: 20 }),
+    );
+
+    const resA = await agent.get(`/api/devices/${deviceA.id}/settings`);
+    const resB = await agent.get(`/api/devices/${deviceB.id}/settings`);
+
+    expect(resA.body.thresholds.temperature).toEqual({ min: 14, max: 16 });
+    expect(resB.body.thresholds.temperature).toEqual({ min: 26, max: 34 });
+  });
 });
 
-describe('PUT /api/settings — taxa mínima/máxima opcional', () => {
+describe('PUT /api/devices/:id/settings — taxa mínima/máxima opcional', () => {
   test('taxa mínima/máxima definida substitui o cálculo automático daquele lado', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 25,
         temperatureTolerance: 2,
@@ -128,9 +173,9 @@ describe('PUT /api/settings — taxa mínima/máxima opcional', () => {
   });
 
   test('taxa mínima maior ou igual à máxima é rejeitada com 400', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 25,
         temperatureTolerance: 2,
@@ -145,9 +190,9 @@ describe('PUT /api/settings — taxa mínima/máxima opcional', () => {
   });
 
   test('enviar null limpa uma taxa definida anteriormente, voltando ao cálculo automático', async () => {
-    const { agent } = await registerAndLogin();
+    const { agent, device } = await registerWithDevice();
 
-    await agent.put('/api/settings').send(
+    await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 25,
         temperatureTolerance: 2,
@@ -158,7 +203,7 @@ describe('PUT /api/settings — taxa mínima/máxima opcional', () => {
       }),
     );
 
-    const res = await agent.put('/api/settings').send(
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
       payload({
         idealTemperature: 25,
         temperatureTolerance: 2,
@@ -174,40 +219,38 @@ describe('PUT /api/settings — taxa mínima/máxima opcional', () => {
   });
 });
 
-describe('PUT /api/settings — notificar por variável', () => {
+describe('PUT /api/devices/:id/settings — notificar por variável', () => {
   const BASE = { idealTemperature: 25, temperatureTolerance: 2, idealHumidity: 60, humidityTolerance: 10 };
 
   test('com notifyHumidity desligado, leitura de umidade fora do limite não cria alerta', async () => {
-    const { agent } = await registerAndLogin();
-    const deviceRes = await agent.post('/api/devices').send({ name: 'Sensor de Teste' });
-    const secret = deviceRes.body.deviceSecret;
-    const deviceId = deviceRes.body.device.deviceIdentifier;
+    const { agent, device, deviceSecret } = await registerWithDevice();
 
-    await agent.put('/api/settings').send({ ...BASE, notifyTemperature: true, notifyHumidity: false });
+    await agent
+      .put(`/api/devices/${device.id}/settings`)
+      .send({ ...BASE, notifyTemperature: true, notifyHumidity: false });
 
     const request = require('supertest');
     await request(app)
       .post('/api/measurements')
-      .set('X-Device-Key', secret)
-      .send({ device_id: deviceId, temperature: 25, humidity: 95 }); // umidade bem fora do limite (50-70)
+      .set('X-Device-Key', deviceSecret)
+      .send({ device_id: device.deviceIdentifier, temperature: 25, humidity: 95 }); // umidade bem fora do limite (50-70)
 
     const alertsRes = await agent.get('/api/alerts');
     expect(alertsRes.body.alerts.filter((a) => a.variable === 'humidity')).toHaveLength(0);
   });
 
   test('com notifyTemperature desligado, temperatura fora do limite não cria alerta, mas umidade continua normal', async () => {
-    const { agent } = await registerAndLogin();
-    const deviceRes = await agent.post('/api/devices').send({ name: 'Sensor de Teste' });
-    const secret = deviceRes.body.deviceSecret;
-    const deviceId = deviceRes.body.device.deviceIdentifier;
+    const { agent, device, deviceSecret } = await registerWithDevice();
 
-    await agent.put('/api/settings').send({ ...BASE, notifyTemperature: false, notifyHumidity: true });
+    await agent
+      .put(`/api/devices/${device.id}/settings`)
+      .send({ ...BASE, notifyTemperature: false, notifyHumidity: true });
 
     const request = require('supertest');
     await request(app)
       .post('/api/measurements')
-      .set('X-Device-Key', secret)
-      .send({ device_id: deviceId, temperature: 50, humidity: 95 }); // ambos fora do limite
+      .set('X-Device-Key', deviceSecret)
+      .send({ device_id: device.deviceIdentifier, temperature: 50, humidity: 95 }); // ambos fora do limite
 
     const alertsRes = await agent.get('/api/alerts');
     expect(alertsRes.body.alerts.filter((a) => a.variable === 'temperature')).toHaveLength(0);
@@ -215,27 +258,28 @@ describe('PUT /api/settings — notificar por variável', () => {
   });
 
   test('desligar a notificação não deixa um alerta já ativo preso: ele ainda se resolve ao voltar ao normal', async () => {
-    const { agent } = await registerAndLogin();
-    const deviceRes = await agent.post('/api/devices').send({ name: 'Sensor de Teste' });
-    const secret = deviceRes.body.deviceSecret;
-    const deviceId = deviceRes.body.device.deviceIdentifier;
+    const { agent, device, deviceSecret } = await registerWithDevice();
     const request = require('supertest');
 
     // Umidade fora do limite com notificação ligada -> abre o alerta.
-    await agent.put('/api/settings').send({ ...BASE, notifyTemperature: true, notifyHumidity: true });
+    await agent
+      .put(`/api/devices/${device.id}/settings`)
+      .send({ ...BASE, notifyTemperature: true, notifyHumidity: true });
     await request(app)
       .post('/api/measurements')
-      .set('X-Device-Key', secret)
-      .send({ device_id: deviceId, temperature: 25, humidity: 95 });
+      .set('X-Device-Key', deviceSecret)
+      .send({ device_id: device.deviceIdentifier, temperature: 25, humidity: 95 });
 
     // Desliga a notificação de umidade enquanto o alerta ainda está ativo.
-    await agent.put('/api/settings').send({ ...BASE, notifyTemperature: true, notifyHumidity: false });
+    await agent
+      .put(`/api/devices/${device.id}/settings`)
+      .send({ ...BASE, notifyTemperature: true, notifyHumidity: false });
 
     // Leitura volta ao normal — o alerta já aberto deve se resolver mesmo assim.
     await request(app)
       .post('/api/measurements')
-      .set('X-Device-Key', secret)
-      .send({ device_id: deviceId, temperature: 25, humidity: 60 });
+      .set('X-Device-Key', deviceSecret)
+      .send({ device_id: device.deviceIdentifier, temperature: 25, humidity: 60 });
 
     const alertsRes = await agent.get('/api/alerts');
     const humidityAlerts = alertsRes.body.alerts.filter((a) => a.variable === 'humidity');

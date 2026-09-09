@@ -61,6 +61,29 @@ describe('isolamento entre usuários', () => {
     expect(res.status).toBe(404);
   });
 
+  test('usuário B não pode ver as configurações do dispositivo de A (404)', async () => {
+    const { userB, device } = await setupTwoUsersWithDevice();
+
+    const res = await userB.agent.get(`/api/devices/${device.id}/settings`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('usuário B não pode alterar as configurações do dispositivo de A (404)', async () => {
+    const { userB, device } = await setupTwoUsersWithDevice();
+
+    const res = await userB.agent.put(`/api/devices/${device.id}/settings`).send({
+      idealTemperature: 22,
+      temperatureTolerance: 3,
+      idealHumidity: 55,
+      humidityTolerance: 15,
+      notifyTemperature: true,
+      notifyHumidity: true,
+    });
+
+    expect(res.status).toBe(404);
+  });
+
   test('usuário B não pode filtrar o histórico pelo dispositivo de A (404)', async () => {
     const { userB, device } = await setupTwoUsersWithDevice();
 
@@ -90,7 +113,7 @@ describe('isolamento entre usuários', () => {
 describe('rotas privadas sem autenticação', () => {
   test.each([
     ['get', '/api/devices'],
-    ['get', '/api/settings'],
+    ['get', '/api/devices/any-id/settings'],
     ['get', '/api/history'],
     ['get', '/api/alerts'],
     ['get', '/api/measurements/latest'],

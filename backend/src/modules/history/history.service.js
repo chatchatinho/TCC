@@ -41,41 +41,64 @@ async function buildWhere(userId, filters) {
   }
 
   // Filtros de situação por variável, independentes entre si — dá para combinar, ex.
-  // "temperatura normal E umidade fora do limite" também é uma consulta válida.
+  // "temperatura normal E umidade fora do limite" também é uma consulta válida. Cada
+  // dispositivo agora tem sua própria faixa de limites, então a checagem vira um OR de
+  // sub-condições por dispositivo (cada uma já restrita ao seu próprio deviceId), em vez
+  // de uma única faixa aplicada a todas as linhas.
   if (filters.temperatureStatus || filters.humidityStatus) {
-    const settings = await settingsService.getOrCreate(userId);
-    const { temperature, humidity } = settingsService.computeThresholds(settings);
+    const targetDeviceIds = filters.deviceId ? [filters.deviceId] : deviceIds;
+    const thresholdsByDevice = await getThresholdsByDevice(targetDeviceIds);
 
-    if (filters.temperatureStatus === 'normal') {
-      conditions.push({ temperature: { gte: temperature.min, lte: temperature.max } });
-    } else if (filters.temperatureStatus === 'out_of_range') {
-      conditions.push({ OR: [{ temperature: { lt: temperature.min } }, { temperature: { gt: temperature.max } }] });
+    if (filters.temperatureStatus) {
+      const temperatureConditions = targetDeviceIds.map((deviceId) => {
+        const { temperature } = thresholdsByDevice.get(deviceId);
+        return filters.temperatureStatus === 'normal'
+          ? { deviceId, temperature: { gte: temperature.min, lte: temperature.max } }
+          : { deviceId, OR: [{ temperature: { lt: temperature.min } }, { temperature: { gt: temperature.max } }] };
+      });
+      conditions.push({ OR: temperatureConditions });
     }
 
-    if (filters.humidityStatus === 'normal') {
-      conditions.push({ humidity: { gte: humidity.min, lte: humidity.max } });
-    } else if (filters.humidityStatus === 'out_of_range') {
-      conditions.push({ OR: [{ humidity: { lt: humidity.min } }, { humidity: { gt: humidity.max } }] });
+    if (filters.humidityStatus) {
+      const humidityConditions = targetDeviceIds.map((deviceId) => {
+        const { humidity } = thresholdsByDevice.get(deviceId);
+        return filters.humidityStatus === 'normal'
+          ? { deviceId, humidity: { gte: humidity.min, lte: humidity.max } }
+          : { deviceId, OR: [{ humidity: { lt: humidity.min } }, { humidity: { gt: humidity.max } }] };
+      });
+      conditions.push({ OR: humidityConditions });
     }
   }
 
   return { AND: conditions };
 }
 
+// Busca (e cria com padrão, se necessário) as configurações de cada dispositivo listado,
+// retornando um Map deviceId -> thresholds para evitar recomputar a mesma consulta.
+async function getThresholdsByDevice(deviceIds) {
+  const entries = await Promise.all(
+    deviceIds.map(async (deviceId) => {
+      const settings = await settingsService.getOrCreate(deviceId);
+      return [deviceId, settingsService.computeThresholds(settings)];
+    }),
+  );
+  return new Map(entries);
+}
+
 function buildOrderBy(sortBy, sortOrder) {
   return { [sortBy]: sortOrder };
 }
 
-async function annotateStatus(userId, measurements) {
-  const settings = await settingsService.getOrCreate(userId);
-  const thresholds = settingsService.computeThresholds(settings);
+async function annotateStatus(measurements) {
+  const deviceIds = [...new Set(measurements.map((m) => m.deviceId))];
+  const thresholdsByDevice = await getThresholdsByDevice(deviceIds);
   return measurements.map((m) => ({
     id: m.id,
     deviceId: m.deviceId,
     temperature: m.temperature,
     humidity: m.humidity,
     measuredAt: m.measuredAt,
-    ...settingsService.evaluateReadingStatus(m, thresholds),
+    ...settingsService.evaluateReadingStatus(m, thresholdsByDevice.get(m.deviceId)),
   }));
 }
 
@@ -93,7 +116,7 @@ async function list(userId, filters) {
     prisma.measurement.count({ where }),
   ]);
 
-  const items = await annotateStatus(userId, rows);
+  const items = await annotateStatus(rows);
   return { items, total, page, pageSize };
 }
 
@@ -104,7 +127,7 @@ async function listForExport(userId, filters) {
     orderBy: buildOrderBy(filters.sortBy, filters.sortOrder),
     take: MAX_EXPORT_ROWS,
   });
-  return annotateStatus(userId, rows);
+  return annotateStatus(rows);
 }
 
 module.exports = { list, listForExport, MAX_EXPORT_ROWS };

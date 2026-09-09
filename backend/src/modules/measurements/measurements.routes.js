@@ -40,7 +40,7 @@ router.get('/latest', requireAuth, async (req, res, next) => {
         if (!measurement) {
           return { device: serializeDevice(device), measurement: null };
         }
-        const settings = await settingsService.getOrCreate(req.userId);
+        const settings = await settingsService.getOrCreate(device.id);
         const thresholds = settingsService.computeThresholds(settings);
         const status = settingsService.evaluateReadingStatus(measurement, thresholds);
         return {

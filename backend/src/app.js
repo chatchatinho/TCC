@@ -14,7 +14,6 @@ const authRoutes = require('./modules/auth/auth.routes');
 const usersRoutes = require('./modules/users/users.routes');
 const devicesRoutes = require('./modules/devices/devices.routes');
 const measurementsRoutes = require('./modules/measurements/measurements.routes');
-const settingsRoutes = require('./modules/settings/settings.routes');
 const alertsRoutes = require('./modules/alerts/alerts.routes');
 const historyRoutes = require('./modules/history/history.routes');
 const { notFoundHandler, errorHandler } = require('./middlewares/errorHandler');
@@ -46,7 +45,6 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/devices', devicesRoutes);
 app.use('/api/measurements', measurementsRoutes);
-app.use('/api/settings', settingsRoutes);
 app.use('/api/alerts', alertsRoutes);
 app.use('/api/history', historyRoutes);
 

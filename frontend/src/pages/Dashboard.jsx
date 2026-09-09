@@ -156,9 +156,9 @@ export default function Dashboard() {
 
       simulatingRef.current = true;
       try {
-        const { thresholds } = await settingsService.getSettings();
         await Promise.all(
-          virtualDevices.map((item) => {
+          virtualDevices.map(async (item) => {
+            const { thresholds } = await settingsService.getSettings(item.device.id);
             const reading = buildSimulatedReading(thresholds);
             return measurementsService.simulateMeasurement({ deviceId: item.device.id, ...reading });
           }),
