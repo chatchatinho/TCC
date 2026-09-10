@@ -13,7 +13,7 @@ import { PERIOD_OPTIONS, computeRange } from '../utils/periods';
 import { formatDateTime, formatNumber, formatRelative, formatTime } from '../utils/format';
 import { getDeviceStatus } from '../utils/deviceStatus';
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 3_000;
 
 export default function Dashboard() {
   const [latest, setLatest] = useState([]);

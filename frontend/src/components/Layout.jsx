@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { to: '/profile', label: 'Perfil', icon: '👤' },
 ];
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 5_000;
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();

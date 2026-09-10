@@ -1,7 +1,7 @@
 // Limiares de status do dispositivo (seção 29 do escopo). Poderiam virar configuráveis
 // por usuário no futuro; por ora são constantes documentadas aqui.
-const ONLINE_THRESHOLD_MIN = 5;
-const STALE_THRESHOLD_MIN = 30;
+const ONLINE_THRESHOLD_MIN = 0.5;
+const STALE_THRESHOLD_MIN = 2;
 
 export function getDeviceStatus(lastSeenAt) {
   if (!lastSeenAt) return { key: 'offline', label: 'Offline', dot: '🔴' };

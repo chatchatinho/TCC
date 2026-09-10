@@ -40,7 +40,7 @@ src/
 │                              dispositivo, períodos de filtro)
 └── pages/
     ├── Login.jsx / Register.jsx
-    ├── Dashboard.jsx         (cards, gráficos, polling a cada 10s, banner de alertas)
+    ├── Dashboard.jsx         (cards, gráficos, polling a cada 3s, banner de alertas)
     ├── History.jsx            (tabela paginada + filtros + exportação CSV)
     ├── Settings.jsx            (temperatura/umidade ideal e tolerância)
     ├── Devices.jsx             (CRUD de dispositivos ESP32, exibição do token uma vez)
@@ -51,7 +51,7 @@ src/
 
 - **Autenticação por cookie httpOnly**: o axios usa `withCredentials: true`; não há token
   manipulado em JavaScript/localStorage (mitiga XSS).
-- **Atualização por polling (10s)**, não WebSocket/SSE — decisão registrada em
+- **Atualização por polling (3-5s)**, não WebSocket/SSE — decisão registrada em
   `../docs/documentacao/01-arquitetura-e-decisoes.md`, adequada ao volume de dados de um TCC.
 - **Fuso horário**: toda formatação de data passa por `src/utils/format.js`, que converte
   o timestamp UTC vindo da API para `America/Sao_Paulo` só na hora de exibir.
