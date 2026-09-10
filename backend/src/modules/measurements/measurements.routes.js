@@ -1,9 +1,8 @@
 const { Router } = require('express');
 const measurementsService = require('./measurements.service');
 const settingsService = require('../settings/settings.service');
-const devicesService = require('../devices/devices.service');
 const pumpsService = require('../pumps/pumps.service');
-const { createMeasurementSchema, simulateMeasurementSchema } = require('./measurements.validation');
+const { createMeasurementSchema } = require('./measurements.validation');
 const { requireAuth } = require('../../middlewares/auth');
 const { requireDeviceAuth } = require('../../middlewares/deviceAuth');
 const { validateBody } = require('../../middlewares/validate');
@@ -20,7 +19,7 @@ router.post(
   validateBody(createMeasurementSchema),
   async (req, res, next) => {
     try {
-      const measurement = await measurementsService.create(req.device, req.body, { source: 'real' });
+      const measurement = await measurementsService.create(req.device, req.body);
       // A bomba pode ter mudado de estado (automaticamente, no modo automatic, ou
       // manualmente pelo app) desde a última leitura deste dispositivo. Devolver o
       // estado atual aqui deixa o próprio ESP32 acionar o relé, sem precisar de uma
@@ -65,24 +64,6 @@ router.get('/latest', requireAuth, async (req, res, next) => {
     );
 
     res.json({ latest: payload });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Endpoint de teste protegido (seção 34 do escopo): permite demonstrar o fluxo completo
-// (medição -> dashboard -> histórico -> alertas) sem depender do ESP32 físico estar
-// conectado. Exige sessão de usuário normal (não a autenticação de dispositivo) e só
-// aceita injetar leituras em dispositivos que pertencem ao próprio usuário logado.
-router.post('/simulate', requireAuth, validateBody(simulateMeasurementSchema), async (req, res, next) => {
-  try {
-    const device = await devicesService.findOwned(req.userId, req.body.deviceId);
-    const measurement = await measurementsService.create(device, req.body, { source: 'simulated' });
-    res.status(201).json({
-      id: measurement.id,
-      measured_at: measurement.measuredAt,
-      received_at: measurement.receivedAt,
-    });
   } catch (err) {
     next(err);
   }

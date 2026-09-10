@@ -14,12 +14,4 @@ const createMeasurementSchema = z.object({
   timestamp: z.string().optional(),
 });
 
-const simulateMeasurementSchema = z.object({
-  deviceId: z.string().uuid('deviceId inválido.'),
-  temperature: z.coerce.number().finite().min(-40).max(80),
-  humidity: z.coerce.number().finite().min(0).max(100),
-  soilMoisture: z.coerce.number().finite().min(0).max(100).optional(),
-  timestamp: z.string().optional(),
-});
-
-module.exports = { createMeasurementSchema, simulateMeasurementSchema };
+module.exports = { createMeasurementSchema };

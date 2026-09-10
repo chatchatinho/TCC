@@ -51,16 +51,6 @@ describe('isolamento entre usuários', () => {
     expect(res.status).toBe(404);
   });
 
-  test('usuário B não pode simular uma medição no dispositivo de A (404)', async () => {
-    const { userB, device } = await setupTwoUsersWithDevice();
-
-    const res = await userB.agent
-      .post('/api/measurements/simulate')
-      .send({ deviceId: device.id, temperature: 25, humidity: 55 });
-
-    expect(res.status).toBe(404);
-  });
-
   test('usuário B não pode ver as configurações do dispositivo de A (404)', async () => {
     const { userB, device } = await setupTwoUsersWithDevice();
 

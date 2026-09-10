@@ -12,27 +12,33 @@ afterAll(closeDb);
 async function setupDevice() {
   const owner = await registerAndLogin();
   const res = await owner.agent.post('/api/devices').send({ name: 'Sensor de Teste' });
-  return { owner, device: res.body.device };
+  return { owner, device: res.body.device, secret: res.body.deviceSecret };
 }
 
-function simulate(agent, deviceId, temperature, humidity) {
-  return agent.post('/api/measurements/simulate').send({ deviceId, temperature, humidity });
+// Injeta uma leitura pela mesma rota que o ESP32 real usa (autenticada por
+// X-Device-Key, não por sessão de usuário) — mais simples de chamar em cada teste do
+// que repetir o par device/secret toda vez.
+function reading(secret, deviceIdentifier, temperature, humidity) {
+  return request(app)
+    .post('/api/measurements')
+    .set('X-Device-Key', secret)
+    .send({ device_id: deviceIdentifier, temperature, humidity });
 }
 
 describe('motor de alertas — evita spam em leituras consecutivas fora do limite', () => {
   test('leitura dentro do limite não cria alerta', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 25, 60);
+    await reading(secret, device.deviceIdentifier, 25, 60);
 
     const res = await owner.agent.get('/api/alerts');
     expect(res.body.alerts).toHaveLength(0);
   });
 
   test('leitura acima do limite cria alerta ativo com direction=above_max', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 30, 60);
+    await reading(secret, device.deviceIdentifier, 30, 60);
 
     const res = await owner.agent.get('/api/alerts?status=active');
     expect(res.body.alerts).toHaveLength(1);
@@ -40,9 +46,9 @@ describe('motor de alertas — evita spam em leituras consecutivas fora do limit
   });
 
   test('leitura abaixo do limite cria alerta ativo com direction=below_min', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 10, 60);
+    await reading(secret, device.deviceIdentifier, 10, 60);
 
     const res = await owner.agent.get('/api/alerts?status=active');
     expect(res.body.alerts).toHaveLength(1);
@@ -50,12 +56,12 @@ describe('motor de alertas — evita spam em leituras consecutivas fora do limit
   });
 
   test('4 leituras seguidas fora do limite geram 1 único alerta, com o pico atualizado', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 28.0, 60);
-    await simulate(owner.agent, device.id, 28.2, 60);
-    await simulate(owner.agent, device.id, 28.5, 60); // pico
-    await simulate(owner.agent, device.id, 28.3, 60);
+    await reading(secret, device.deviceIdentifier, 28.0, 60);
+    await reading(secret, device.deviceIdentifier, 28.2, 60);
+    await reading(secret, device.deviceIdentifier, 28.5, 60); // pico
+    await reading(secret, device.deviceIdentifier, 28.3, 60);
 
     const res = await owner.agent.get('/api/alerts?status=active');
     expect(res.body.alerts).toHaveLength(1);
@@ -63,10 +69,10 @@ describe('motor de alertas — evita spam em leituras consecutivas fora do limit
   });
 
   test('voltar ao normal encerra o alerta (status=resolved, endedAt preenchido)', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 30, 60);
-    await simulate(owner.agent, device.id, 25, 60);
+    await reading(secret, device.deviceIdentifier, 30, 60);
+    await reading(secret, device.deviceIdentifier, 25, 60);
 
     const active = await owner.agent.get('/api/alerts?status=active');
     expect(active.body.alerts).toHaveLength(0);
@@ -77,11 +83,11 @@ describe('motor de alertas — evita spam em leituras consecutivas fora do limit
   });
 
   test('um novo desvio após o fechamento cria um alerta NOVO (não reabre o antigo)', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 30, 60); // abre
-    await simulate(owner.agent, device.id, 25, 60); // fecha
-    await simulate(owner.agent, device.id, 31, 60); // abre de novo
+    await reading(secret, device.deviceIdentifier, 30, 60); // abre
+    await reading(secret, device.deviceIdentifier, 25, 60); // fecha
+    await reading(secret, device.deviceIdentifier, 31, 60); // abre de novo
 
     const res = await owner.agent.get('/api/alerts');
     expect(res.body.alerts).toHaveLength(2);
@@ -90,9 +96,9 @@ describe('motor de alertas — evita spam em leituras consecutivas fora do limit
   });
 
   test('temperatura e umidade fora do limite ao mesmo tempo geram 2 alertas independentes', async () => {
-    const { owner, device } = await setupDevice();
+    const { owner, device, secret } = await setupDevice();
 
-    await simulate(owner.agent, device.id, 30, 90);
+    await reading(secret, device.deviceIdentifier, 30, 90);
 
     const res = await owner.agent.get('/api/alerts?status=active');
     expect(res.body.alerts.map((a) => a.variable).sort()).toEqual(['humidity', 'temperature']);
@@ -101,8 +107,8 @@ describe('motor de alertas — evita spam em leituras consecutivas fora do limit
 
 describe('GET /api/alerts/summary e PATCH /api/alerts/:id/read', () => {
   test('summary conta alertas não lidos; marcar como lido reduz a contagem', async () => {
-    const { owner, device } = await setupDevice();
-    await simulate(owner.agent, device.id, 30, 60);
+    const { owner, device, secret } = await setupDevice();
+    await reading(secret, device.deviceIdentifier, 30, 60);
 
     const before = await owner.agent.get('/api/alerts/summary');
     expect(before.body.unreadCount).toBe(1);

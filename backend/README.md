@@ -102,17 +102,6 @@ src/
   hash (`bcryptjs`) salvo em `devices.device_secret_hash` — o token nunca é armazenado em texto
   puro, igual a uma senha de usuário.
 
-### Testando sem o ESP32 físico
-
-`POST /api/measurements/simulate` (autenticado como usuário, não como dispositivo) permite
-injetar uma leitura em qualquer dispositivo do próprio usuário — útil para demonstrar o fluxo
-completo (medição → dashboard → histórico → alerta) mesmo sem hardware conectado. O Dashboard do
-frontend chama esse endpoint automaticamente a cada 2s para CADA dispositivo do usuário que não
-esteja recebendo dados de um ESP32 físico no momento — não só o selecionado na tela, para os
-outros continuarem "vivos" em segundo plano (ver `Device.lastRealMeasurementAt`); leituras reais
-vindas de `POST /api/measurements` desligam a simulação automática daquele dispositivo
-especificamente, enquanto o hardware estiver ativo.
-
 ## Testes automatizados
 
 ```bash

@@ -116,14 +116,6 @@ esp32/firmware/
 com o sketch — por isso as camadas de abstração do sensor e da bomba ficam lá, e não
 numa pasta com outro nome.
 
-## Testando sem o hardware conectado
-
-Se o ESP32 não estiver disponível no momento (ex. para ensaiar a apresentação), não
-precisa fazer nada: o Dashboard já gera leituras simuladas sozinho, automaticamente, a
-cada 2 segundos (`POST /api/measurements/simulate` — ver `../backend/README.md`), com
-uma pequena proporção saindo do limite configurado para demonstrar os alertas. Assim que
-o firmware real começar a enviar leituras de verdade, a simulação automática é desligada.
-
 ## Solução de problemas
 
 - **Erro de compilação "DHT.h: No such file or directory"**: a biblioteca "DHT sensor

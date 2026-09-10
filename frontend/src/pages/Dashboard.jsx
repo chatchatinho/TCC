@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import * as measurementsService from '../services/measurements';
 import * as historyService from '../services/history';
-import * as settingsService from '../services/settings';
 import * as alertsService from '../services/alerts';
 import * as pumpsService from '../services/pumps';
 import Layout from '../components/Layout';
@@ -15,53 +14,6 @@ import { formatDateTime, formatNumber, formatRelative, formatTime } from '../uti
 import { getDeviceStatus } from '../utils/deviceStatus';
 
 const POLL_INTERVAL_MS = 10_000;
-const AUTO_SIM_INTERVAL_MS = 2_000;
-// Proporção 100:5 (normal:fora do limite) pedida no escopo — 5 leituras fora do limite
-// a cada 105 leituras simuladas.
-const OUT_OF_RANGE_PROBABILITY = 5 / 105;
-// Se uma leitura real (ESP32 físico) chegou há menos que isso, a simulação automática
-// fica completamente pausada — evita misturar dado simulado com hardware de verdade.
-const REAL_HARDWARE_GRACE_MS = 60_000;
-
-function randomInRange(min, max) {
-  return min + Math.random() * (max - min);
-}
-
-// Gera uma leitura simulada realista a partir dos limites configurados pelo usuário:
-// a maior parte das leituras cai dentro da faixa ideal, e uma pequena fração (proporção
-// 100:5) sai propositalmente do limite de temperatura ou de umidade (nunca os dois ao
-// mesmo tempo, para deixar claro no dashboard qual variável "disparou" o alerta).
-// Empurra um limite para fora, na direção sorteada, por uma quantidade aleatória entre
-// `minSpan` e `maxSpan`, sem deixar o valor sair da faixa fisicamente possível.
-function pushOutOfRange(limitMin, limitMax, minSpan, maxSpan, physicalMin, physicalMax) {
-  const direction = Math.random() < 0.5 ? -1 : 1;
-  const span = randomInRange(minSpan, maxSpan);
-  const base = direction < 0 ? limitMin : limitMax;
-  return Math.min(physicalMax, Math.max(physicalMin, base + direction * span));
-}
-
-function buildSimulatedReading(thresholds) {
-  let temperature = randomInRange(thresholds.temperature.min, thresholds.temperature.max);
-  let humidity = randomInRange(thresholds.humidity.min, thresholds.humidity.max);
-  let soilMoisture = randomInRange(thresholds.soilMoisture.min, thresholds.soilMoisture.max);
-
-  if (Math.random() < OUT_OF_RANGE_PROBABILITY) {
-    const roll = Math.random();
-    if (roll < 1 / 3) {
-      temperature = pushOutOfRange(thresholds.temperature.min, thresholds.temperature.max, 1, 3, 0, 60);
-    } else if (roll < 2 / 3) {
-      humidity = pushOutOfRange(thresholds.humidity.min, thresholds.humidity.max, 3, 8, 0, 100);
-    } else {
-      soilMoisture = pushOutOfRange(thresholds.soilMoisture.min, thresholds.soilMoisture.max, 3, 8, 0, 100);
-    }
-  }
-
-  return {
-    temperature: Number(temperature.toFixed(1)),
-    humidity: Number(humidity.toFixed(1)),
-    soilMoisture: Number(soilMoisture.toFixed(1)),
-  };
-}
 
 export default function Dashboard() {
   const [latest, setLatest] = useState([]);
@@ -73,14 +25,11 @@ export default function Dashboard() {
   const [deviceAlertCounts, setDeviceAlertCounts] = useState({});
   const [pump, setPump] = useState(null);
   const [pumpToggling, setPumpToggling] = useState(false);
-  const simulatingRef = useRef(false);
-  const latestRef = useRef([]);
 
   const loadLatest = useCallback(async () => {
     try {
       const data = await measurementsService.getLatest();
       setLatest(data);
-      latestRef.current = data;
     } finally {
       setLoading(false);
     }
@@ -156,46 +105,6 @@ export default function Dashboard() {
     () => (primary?.device ? getDeviceStatus(primary.device.lastSeenAt) : null),
     [primary],
   );
-
-  // Simulação automática (sem botão): a cada 2s, gera uma leitura para CADA dispositivo
-  // "virtual" do usuário — não só o que está selecionado no momento — para que os outros
-  // continuem "vivos" em segundo plano (cards de resumo, alertas) mesmo sem o usuário
-  // estar olhando para eles. Um dispositivo só fica de fora da rodada se um ESP32 físico
-  // tiver mandado uma leitura real recentemente (ver `lastRealMeasurementAt`); nesse
-  // caso, ele passa a ser tratado como hardware real e a simulação o ignora por completo.
-  // Lê a lista de dispositivos de uma ref (em vez de depender de `latest` diretamente)
-  // para o intervalo não precisar ser recriado a cada leitura simulada.
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (simulatingRef.current) return;
-      const devices = latestRef.current;
-      if (devices.length === 0) return;
-
-      const virtualDevices = devices.filter((item) => {
-        const lastReal = item.device.lastRealMeasurementAt;
-        const usingRealHardware = lastReal && Date.now() - new Date(lastReal).getTime() < REAL_HARDWARE_GRACE_MS;
-        return !usingRealHardware;
-      });
-      if (virtualDevices.length === 0) return;
-
-      simulatingRef.current = true;
-      try {
-        await Promise.all(
-          virtualDevices.map(async (item) => {
-            const { thresholds } = await settingsService.getSettings(item.device.id);
-            const reading = buildSimulatedReading(thresholds);
-            return measurementsService.simulateMeasurement({ deviceId: item.device.id, ...reading });
-          }),
-        );
-        await Promise.all([loadLatest(), loadChart(), loadPump()]);
-        setAlertsRefreshKey((k) => k + 1);
-      } finally {
-        simulatingRef.current = false;
-      }
-    }, AUTO_SIM_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, [loadLatest, loadChart, loadPump]);
 
   async function handlePumpToggle() {
     if (!pump) return;

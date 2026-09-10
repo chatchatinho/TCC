@@ -287,12 +287,6 @@ paths:
       security: [{ sessionCookie: [] }]
       responses:
         "200": { description: OK }
-  /measurements/simulate:
-    post:
-      summary: Injeta uma leitura simulada em um dispositivo próprio (demonstração sem hardware)
-      security: [{ sessionCookie: [] }]
-      responses:
-        "201": { description: Medição simulada registrada }
   /history:
     get:
       summary: Histórico paginado de medições com filtros
