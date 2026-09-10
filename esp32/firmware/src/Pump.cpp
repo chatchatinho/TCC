@@ -1,6 +1,14 @@
 #include "Pump.h"
 #include <Arduino.h>
 
+// O Arduino compila cada arquivo dentro de src/ como uma unidade separada do
+// firmware.ino — os #define de config.h (incluído só pelo firmware.ino) NÃO
+// apareceriam aqui sem este include explícito, e os #ifndef abaixo cairiam sempre no
+// valor padrão, ignorando silenciosamente RELAY_PIN/RELAY_ACTIVE_LOW do usuário.
+#if __has_include("../config.h")
+#include "../config.h"
+#endif
+
 // Relé da bomba d'água é opcional — RELAY_PIN/RELAY_ACTIVE_LOW vêm de config.h, mas
 // caem num padrão aqui se um config.h antigo (de antes desse recurso existir) não os
 // definir, para não quebrar a build de quem já tinha o firmware configurado.

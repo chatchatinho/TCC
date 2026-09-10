@@ -1,6 +1,14 @@
 #include "Sensor.h"
 #include <DHT.h>
 
+// O Arduino compila cada arquivo dentro de src/ como uma unidade separada do
+// firmware.ino — os #define de config.h (incluído só pelo firmware.ino) NÃO
+// apareceriam aqui sem este include explícito, e os #ifndef abaixo cairiam sempre no
+// valor padrão, ignorando silenciosamente o que o usuário configurou.
+#if __has_include("../config.h")
+#include "../config.h"
+#endif
+
 // DHT11 conectado ao pino de dados abaixo, com resistor de pull-up de 10kΩ entre VCC
 // e o pino de dados (conforme datasheet do DHT11). Ajuste DHT_PIN conforme a fiação.
 #define DHT_PIN 4
@@ -49,11 +57,13 @@ void sensorSetup() {
 }
 
 // Converte a leitura bruta do ADC em % de umidade do solo (0-100), usando a
-// calibração seco/molhado acima. constrain() evita que ruído fora da faixa calibrada
-// vire um valor fisicamente absurdo (negativo ou acima de 100%).
+// calibração seco/molhado acima. O map() padrão do Arduino trabalha com long e
+// trunca a divisão antes de virar float — o cálculo é refeito aqui direto em ponto
+// flutuante para não perder precisão. constrain() evita que ruído fora da faixa
+// calibrada vire um valor fisicamente absurdo (negativo ou acima de 100%).
 static float readSoilMoisturePercent() {
   int raw = analogRead(SOIL_MOISTURE_PIN);
-  float percent = map(raw, SOIL_MOISTURE_DRY_RAW, SOIL_MOISTURE_WET_RAW, 0, 100);
+  float percent = (float)(raw - SOIL_MOISTURE_DRY_RAW) * 100.0f / (float)(SOIL_MOISTURE_WET_RAW - SOIL_MOISTURE_DRY_RAW);
   return constrain(percent, 0.0f, 100.0f);
 }
 
