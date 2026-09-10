@@ -58,18 +58,26 @@ Justificativa completa de cada escolha (incluindo alternativas consideradas) em
 O firmware (`esp32/firmware/firmware.ino`) segue este ciclo:
 
 1. **Boot**: conecta ao Wi-Fi (com timeout) e sincroniza o relógio via NTP em UTC.
-2. **Loop periódico** (a cada `READING_INTERVAL_MS`, configurável): lê o sensor DHT11
-   através de uma camada de abstração (`src/Sensor.h`/`Sensor.cpp`) que isola a
-   biblioteca específica do sensor do resto do firmware — trocar de sensor no futuro
-   exige mexer só nesse arquivo.
+2. **Loop periódico** (a cada `READING_INTERVAL_MS`, configurável): lê o sensor DHT11 e,
+   opcionalmente, um sensor de umidade do solo, através de uma camada de abstração
+   (`src/Sensor.h`/`Sensor.cpp`) que isola as bibliotecas específicas do resto do
+   firmware — trocar de sensor no futuro exige mexer só nesse arquivo.
 3. A leitura é **validada localmente** (descarta NaN e valores fora de uma faixa
    plausível) antes de qualquer envio.
-4. Se válida, monta um JSON (`device_id`, `temperature`, `humidity`, `timestamp`) e
-   envia por `HTTPClient` com o header `X-Device-Key`.
+4. Se válida, monta um JSON (`device_id`, `temperature`, `humidity`, `soilMoisture`
+   quando o sensor de solo está habilitado, `timestamp`) e envia por `HTTPClient` com o
+   header `X-Device-Key`.
 5. Trata a resposta (sucesso, erro do servidor, falha de rede) sem travar — sempre volta
-   ao loop e tenta de novo no próximo ciclo.
+   ao loop e tenta de novo no próximo ciclo. Numa resposta de sucesso, lê o campo
+   `pump.isOn` e aciona o relé da bomba d'água (`src/Pump.h`/`Pump.cpp`) de acordo — quem
+   decide ligar/desligar é sempre o backend, o firmware só espelha esse estado.
 6. Se o Wi-Fi cair, tenta reconectar periodicamente (não bloqueia o restante do loop
    indefinidamente).
+
+Não existe mais nenhum caminho para gravar uma leitura "de mentira": um endpoint de
+simulação e um gerador automático de leituras no Dashboard existiram numa versão
+anterior do projeto e foram removidos assim que o hardware real passou a funcionar de
+ponta a ponta — hoje, toda leitura do sistema vem de um ESP32 físico.
 
 Detalhes de fiação, bibliotecas e configuração em [`esp32/README.md`](../../esp32/README.md).
 
@@ -126,8 +134,9 @@ texto puro, por que `timestamptz`) em
 ```mermaid
 erDiagram
     USERS ||--o{ DEVICES : possui
-    USERS ||--|| SETTINGS : configura
     USERS ||--o{ ALERTS : recebe
+    DEVICES ||--|| SETTINGS : configura
+    DEVICES ||--o| PUMPS : controla
     DEVICES ||--o{ MEASUREMENTS : gera
     DEVICES ||--o{ ALERTS : origina
     MEASUREMENTS |o--o{ ALERTS : "dispara (opcional)"
@@ -146,30 +155,41 @@ erDiagram
         uuid user_id FK
         boolean active
         timestamptz last_seen_at
-        timestamptz last_real_measurement_at
     }
     MEASUREMENTS {
         uuid id PK
         uuid device_id FK
         decimal temperature
         decimal humidity
+        decimal soil_moisture "opcional"
         timestamptz measured_at
         timestamptz received_at
     }
     SETTINGS {
         uuid id PK
-        uuid user_id FK
+        uuid device_id FK "1 configuração por DISPOSITIVO"
         decimal ideal_temperature
         decimal temperature_tolerance
         decimal ideal_humidity
         decimal humidity_tolerance
+        decimal ideal_soil_moisture "opcional"
+        decimal soil_moisture_tolerance "opcional"
+    }
+    PUMPS {
+        uuid id PK
+        uuid device_id FK
+        text mode "automatic | notify_only | manual"
+        boolean is_on
+        decimal moisture_threshold
+        int below_threshold_minutes
+        timestamptz below_threshold_since "nullable"
     }
     ALERTS {
         uuid id PK
         uuid user_id FK
         uuid device_id FK
         uuid triggering_measurement_id FK
-        text variable
+        text variable "temperature | humidity | soil_moisture"
         text direction
         decimal peak_value
         decimal limit_min
@@ -184,6 +204,13 @@ erDiagram
 Índices relevantes: `measurements(device_id, measured_at DESC)` (histórico/gráficos),
 `alerts(user_id, status)` e `alerts(device_id, status)` (busca do alerta ativo e
 contagem de não lidos).
+
+Duas mudanças em relação a uma versão anterior do modelo: `Settings` deixou de ser
+1-para-1 com `User` e passou a ser 1-para-1 com `Device` (dois dispositivos do mesmo
+usuário podem monitorar ambientes com faixas bem diferentes — uma estufa e uma
+geladeira, por exemplo); e `Device.last_real_measurement_at` foi removido junto da
+remoção do endpoint de simulação (seção 9) — sem simulação, não existe mais distinção
+entre leitura "real" e "simulada" a rastrear.
 
 ## 8. Autenticação
 
@@ -271,15 +298,42 @@ No resumo de outros dispositivos do Dashboard, a mesma bolinha aparece ao lado d
 dispositivo com notificação pendente, com a contagem quebrada por `device_id`
 (`GET /api/alerts` filtrado no cliente, já que a API não expõe esse agrupamento pronto).
 
+## 9b. Bomba d'água (irrigação automática)
+
+Dispositivos com sensor de umidade do solo podem controlar uma bomba (relé) em três
+modos independentes, configuráveis por dispositivo em Configurações → Bomba d'água:
+
+- **Automático**: liga sozinha quando a umidade do solo fica abaixo de
+  `moistureThreshold` por, no mínimo, `belowThresholdMinutes` minutos seguidos; desliga
+  sozinha assim que a leitura volta a ficar acima do limite.
+- **Só notificar**: continua contando o tempo seco (para a tela mostrar essa informação),
+  mas nunca liga/desliga a bomba sozinha — só quem decide é o usuário.
+- **Manual**: o relé só muda de estado por comando explícito do usuário
+  (`PUT /devices/:id/pump/toggle`); o sistema nunca liga ou desliga uma bomba que o
+  usuário controla manualmente.
+
+O campo `Pump.belowThresholdSince` modela "desde quando a leitura mais recente está
+continuamente abaixo do limite" como um evento (mesma ideia do motor de alertas, seção
+9) — é zerado assim que uma leitura volta ao normal, para o período estipulado ser
+sempre contado a partir da seca **atual**. O firmware do ESP32 nunca decide sozinho:
+ele só lê o campo `pump.isOn` devolvido na resposta de cada leitura enviada e aciona o
+relé físico de acordo (`esp32/README.md`).
+
 ## 10. Gráficos
 
 Dashboard e histórico usam Chart.js (via `react-chartjs-2`) com gráficos de linha para
-temperatura e umidade. O eixo X usa rótulos de horário já formatados no fuso de São
-Paulo (não uma escala de tempo contínua), porque o volume de pontos exibido é sempre
-limitado pelo filtro de período aplicado na consulta à API (seção 11) — evita depender
-de uma biblioteca adicional só para eixo temporal. Atualização a cada 10s por polling
-(ver decisão na seção 24 do escopo, registrada em
+temperatura, umidade do ar e umidade do solo. O eixo X usa rótulos de horário já
+formatados no fuso de São Paulo (não uma escala de tempo contínua), porque o volume de
+pontos exibido é sempre limitado pelo filtro de período aplicado na consulta à API
+(seção 11) — evita depender de uma biblioteca adicional só para eixo temporal.
+Atualização a cada 3s por polling (reduzido de um valor inicial de 10s depois que o
+sistema passou a depender só de hardware real — ver decisão na seção 24 do escopo,
+registrada em
 [`01-arquitetura-e-decisoes.md`](01-arquitetura-e-decisoes.md#3-justificativa-das-escolhas)).
+O status de conexão de cada dispositivo (online/sem comunicação recente/offline) também
+usa limiares curtos pelo mesmo motivo: até 30 segundos sem leitura nova é "Online", até
+2 minutos é "Sem comunicação recente", mais que isso é "Offline"
+(`frontend/src/utils/deviceStatus.js`).
 
 ## 11. Histórico
 
@@ -325,9 +379,10 @@ completo (cadastro → login → dashboard → alertas → histórico) funciona 
 
 ## 16. Testes
 
-54 testes automatizados (Jest + Supertest) contra um banco de teste real, cobrindo
+103 testes automatizados (Jest + Supertest) contra um banco de teste real, cobrindo
 cadastro, login, isolamento entre usuários, ingestão de medições, o motor de alertas
-(incluindo a lógica anti-spam) e histórico — ver
+(incluindo a lógica anti-spam), a bomba d'água (modos automático/só notificar/manual) e
+histórico — ver
 [`backend/README.md`](../../backend/README.md#testes-automatizados) para como rodar.
 Verificações end-to-end manuais (navegador real) do fluxo completo do usuário estão
 documentadas como parte do processo de desenvolvimento (Etapas 4 e 6 do histórico de

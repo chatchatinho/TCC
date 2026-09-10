@@ -86,8 +86,13 @@ Abra `config.h` e preencha:
 #define API_BASE_URL "http://SEU_IP_LOCAL:3000/api"
 #define DEVICE_ID "ESP32-A1B2C3"          // o identificador copiado no passo 5
 #define DEVICE_TOKEN "cole-o-token-aqui"  // o token copiado no passo 5
-#define READING_INTERVAL_MS 30000
+#define READING_INTERVAL_MS 5000
 ```
+
+Use um intervalo curto (5 segundos, o padrão) e não algo como 30 segundos: o sistema
+considera um dispositivo "Online" só enquanto ele mandar uma leitura a cada 30 segundos
+ou menos — um intervalo maior que isso faz o status ficar piscando entre 🟢 Online e 🟡
+Sem comunicação recente a cada ciclo.
 
 **Sobre o `API_BASE_URL`**: como o ESP32 está numa rede Wi-Fi separada do seu PC (não
 é `localhost` para ele), você precisa usar o **IP local da sua máquina** na rede, não
@@ -140,19 +145,26 @@ Leitura registrada com sucesso (201): {...}
 
 ## 11. Confirmar no sistema web
 
-Volte para `http://localhost:5173`, vá em **Dashboard** — a leitura do sensor real
-deve aparecer no card de Temperatura/Umidade em até 30 segundos (o intervalo
-configurado no `config.h`), e o status do dispositivo deve virar **🟢 Online**.
-
-> A simulação automática de leituras (que roda sozinha a cada 2s quando não há hardware
-> real conectado) se desliga automaticamente assim que o sistema detecta uma leitura real
-> chegando — não vai mais aparecer nenhum dado simulado misturado com o do seu ESP32.
+Volte para `http://localhost:5173`, vá em **Dashboard** — a leitura do sensor real deve
+aparecer no card de Temperatura/Umidade em até 5 segundos (o intervalo configurado no
+`config.h`, mais até 3 segundos do polling da própria tela), e o status do dispositivo
+deve virar **🟢 Online**.
 
 ## 12. Testar um alerta de verdade
 
 Segure o sensor DHT11 na mão, ou sopre nele, por alguns minutos, para forçar a
 temperatura/umidade a saírem do limite configurado em **Configurações**. Observe o
 alerta aparecer no Dashboard.
+
+## 13. Opcional: sensor de umidade do solo e bomba d'água
+
+Este guia cobre só o DHT11 (temperatura/umidade do ar), que é o mínimo para o sistema
+funcionar. Se o seu dispositivo também tiver um sensor de umidade do solo e/ou um relé
+de bomba d'água, a fiação, os campos extras de `config.h`
+(`SOIL_MOISTURE_ENABLED`/`SOIL_MOISTURE_PIN`/`RELAY_PIN`/`RELAY_ACTIVE_LOW`) e a
+calibração seco/molhado do sensor de solo estão documentados em
+[`esp32/README.md`](../../esp32/README.md) — o firmware já é o mesmo, só a configuração
+muda.
 
 ## Problemas comuns
 

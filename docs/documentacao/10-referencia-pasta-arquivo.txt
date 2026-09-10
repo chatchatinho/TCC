@@ -41,7 +41,7 @@ TCC/
 │   │   ├── lib/
 │   │   ├── middlewares/
 │   │   └── modules/
-│   │       ├── auth/ users/ devices/ measurements/ settings/ alerts/ history/
+│   │       ├── auth/ users/ devices/ measurements/ settings/ alerts/ pumps/ history/
 │   └── tests/
 ├── frontend/
 │   ├── package.json / package-lock.json
@@ -155,9 +155,9 @@ TCC/
 
 ### 3.2 `backend/prisma/` — o esquema do banco de dados
 
-- **`schema.prisma`** — o arquivo mais importante do banco: define as 5 tabelas
-  (`User`, `Device`, `Measurement`, `Setting`, `Alert`) e os 3 enums
-  (`AlertVariable`, `AlertDirection`, `AlertStatus`), campo por campo, com seus tipos,
+- **`schema.prisma`** — o arquivo mais importante do banco: define as 6 tabelas
+  (`User`, `Device`, `Measurement`, `Setting`, `Alert`, `Pump`) e os 4 enums
+  (`AlertVariable`, `AlertDirection`, `AlertStatus`, `PumpMode`), campo por campo, com seus tipos,
   valores padrão e relações. Explicado tabela por tabela na
   [seção 4 do documento 09](09-aula-completa-do-sistema.md#4-o-banco-de-dados-tabela-por-tabela).
 - **`seed.js`** — script (`npm run db:seed`) que **apaga tudo** (`alert.deleteMany()`,
@@ -166,22 +166,29 @@ TCC/
   um cenário de demonstração: um usuário de teste (`teste@tcc.local` /
   `Senha@Teste123`), um dispositivo (`ESP32-001`) com um token gerado na hora
   (impresso no console, nunca salvo em texto puro), 3 horas de histórico simulado (uma
-  leitura a cada 5 minutos, com uma janela de ~20 minutos de temperatura fora do
-  limite no meio) e um alerta já resolvido correspondente a essa janela, marcado como
-  não lido — para já aparecer a notificação "você possui alertas desde seu último
-  acesso" assim que alguém logar com esse usuário de teste.
+  leitura a cada 5 minutos, incluindo umidade do solo, com uma janela de ~20 minutos de
+  temperatura fora do limite no meio) e um alerta já resolvido correspondente a essa
+  janela, marcado como não lido — para já aparecer a notificação "você possui alertas
+  desde seu último acesso" assim que alguém logar com esse usuário de teste. A mesma
+  janela de solo seco também é avaliada pela `pumpsService.evaluateMeasurement()`
+  (seção 5.8b do documento 09) para deixar a bomba de demonstração num estado
+  consistente com o histórico gerado (chega a ligar e desligar sozinha, em modo
+  automático).
 - **`migrations/`** — o histórico, passo a passo, de como o esquema do banco evoluiu.
   Cada subpasta é uma migration com um arquivo `migration.sql` (SQL puro, gerado pelo
   Prisma) e é numerada por data/hora de criação — nunca editada depois de aplicada,
-  só uma nova migration é criada em cima. As cinco existentes, em ordem:
+  só uma nova migration é criada em cima. As oito existentes, em ordem:
 
   | Migration | O que mudou |
   |---|---|
   | `20260821133723_init` | Cria as tabelas iniciais (`users`, `devices`, `measurements`, `settings`, `alerts`) e os três enums de alerta |
   | `20260821184000_add_avatar_and_password_reset` | Adiciona `avatar_data`, `password_reset_token_hash` e `password_reset_expires_at` em `users` |
-  | `20260821204801_add_last_real_measurement_at` | Adiciona `last_real_measurement_at` em `devices` (distinção leitura real vs. simulada) |
+  | `20260821204801_add_last_real_measurement_at` | Adiciona `last_real_measurement_at` em `devices` (distinção leitura real vs. simulada — removido depois, ver a migration de remoção da simulação abaixo) |
   | `20260821214853_add_optional_min_max_thresholds` | Adiciona `temperature_min/max` e `humidity_min/max` opcionais em `settings` |
   | `20260821234820_add_last_login_and_notify_flags` | Adiciona `last_login_at` em `users` e `notify_temperature`/`notify_humidity` em `settings` |
+  | `20260909234624_settings_per_device` | Move `settings` de 1-por-`user` para 1-por-`device` |
+  | `20260910000514_soil_moisture_and_pump` | Adiciona `soil_moisture` em `measurements`, os 5 campos de solo em `settings`, o valor `soil_moisture` no enum `AlertVariable`, e as tabelas/enum novos `pumps`/`PumpMode` |
+  | `20260910015406_remove_simulation_and_last_real_measurement` | Remove `devices.last_real_measurement_at` — sem o endpoint de simulação (seção 3.3, `measurements/`), não existe mais leitura "simulada" para distinguir de uma "real" |
 
   - **`migration_lock.toml`** — arquivo pequeno e automático que só registra qual banco
   de dados está sendo usado (`provider = "postgresql"`) — o comentário no próprio
@@ -279,9 +286,12 @@ Abaixo, o que cada arquivo específico contém:
   separado — a lógica mora direto nas rotas (chamando `prisma` e reaproveitando
   `authService.changePassword`/`deleteAccount`), por ser simples o bastante.
 
-**`devices/`** (CRUD de ESP32s)
+**`devices/`** (CRUD de ESP32s — e também onde moram as rotas de `settings`/`pumps`,
+já que ambos são configurações "de um dispositivo específico")
 - `devices.routes.js` — `GET`/`POST /devices`, `PUT`/`DELETE /devices/:id`,
-  `POST /devices/:id/rotate-secret`.
+  `POST /devices/:id/rotate-secret`, `GET`/`PUT /devices/:id/settings` (chamando
+  `settingsService`), `GET`/`PUT /devices/:id/pump` e `POST /devices/:id/pump/toggle`
+  (chamando `pumpsService`) — os dois últimos módulos não têm arquivo de rotas próprio.
 - `devices.service.js` — geração do identificador público (`ESP32-XXXXXX`, se não
   informado), geração e hash do token, e `findOwned()` — a função que garante (com
   `404`, nunca `403`) que um usuário só acessa dispositivos que são dele. Ver
@@ -289,29 +299,43 @@ Abaixo, o que cada arquivo específico contém:
 - `devices.validation.js` — nome (2 a 100 caracteres) e um identificador opcional
   customizado (letras, números, `-`/`_`, 3 a 50 caracteres) na criação.
 
-**`measurements/`** (ingestão de leituras)
-- `measurements.routes.js` — `POST /measurements` (autenticação de dispositivo, para
-  o ESP32 real), `GET /measurements/latest` (última leitura de cada dispositivo do
-  usuário), `POST /measurements/simulate` (autenticação de usuário, para a simulação).
+**`measurements/`** (ingestão de leituras — única fonte de dados do sistema)
+- `measurements.routes.js` — só `POST /measurements` (autenticação de dispositivo, para
+  o ESP32 real) e `GET /measurements/latest` (última leitura de cada dispositivo do
+  usuário). O endpoint `POST /measurements/simulate` existiu numa versão anterior e foi
+  removido junto do gerador automático de leituras do Dashboard (seção 4.5) assim que o
+  hardware real passou a funcionar de ponta a ponta.
   Ver [seção 5.7](09-aula-completa-do-sistema.md#57-módulo-measurements-a-porta-de-entrada-dos-dados).
-- `measurements.service.js` — `create()` (grava a medição, atualiza
-  `lastSeenAt`/`lastRealMeasurementAt`, dispara a avaliação de alertas),
-  `resolveMeasuredAt()` (trata timestamp ausente/implausível vindo do ESP32),
-  `latestByUser()`.
+- `measurements.service.js` — `create()` (grava a medição — incluindo `soilMoisture`
+  quando enviado —, atualiza `lastSeenAt`, dispara a avaliação de alertas e, se houver
+  leitura de solo, a avaliação da bomba), `resolveMeasuredAt()` (trata timestamp
+  ausente/implausível vindo do ESP32), `latestByUser()`.
 - `measurements.validation.js` — faixa fisicamente plausível para a leitura bruta
-  (-40°C a 80°C, 0% a 100% — mais ampla que a faixa nominal do DHT11 de propósito, só
-  rejeitando o fisicamente impossível).
+  (-40°C a 80°C, 0% a 100% de umidade do ar, 0% a 100% de umidade do solo quando
+  enviada — mais ampla que a faixa nominal do DHT11 de propósito, só rejeitando o
+  fisicamente impossível).
 
-**`settings/`** (limites de temperatura/umidade)
-- `settings.routes.js` — `GET`/`PUT /settings`.
-- `settings.service.js` — `getOrCreate()` (cria configuração padrão se o usuário
+**`settings/`** (limites de temperatura/umidade/solo, por dispositivo — sem
+`settings.routes.js` próprio: as rotas moram em `devices.routes.js`, ver abaixo)
+- `settings.service.js` — `getOrCreate()` (cria configuração padrão se o dispositivo
   ainda não tiver uma), `update()`, `computeThresholds()` (a fórmula ideal±tolerância
   com override opcional, [seção 5.8](09-aula-completa-do-sistema.md#58-módulo-settings-cálculo-da-faixa-aceitável)),
   `evaluateReadingStatus()` (classifica uma leitura como `normal`/`out_of_range` por
-  variável).
-- `settings.validation.js` — faixas plausíveis para cada campo e duas regras cruzadas
-  (`refine`): a taxa mínima precisa ser menor que a máxima, tanto para temperatura
-  quanto para umidade.
+  variável). Desde que `Setting` passou a ser 1-para-1 com `Device` (não mais com
+  `User`), toda essa lógica passou a receber um `deviceId` em vez de um `userId`.
+- `settings.validation.js` — faixas plausíveis para cada campo (temperatura, umidade do
+  ar, umidade do solo) e regras cruzadas (`refine`): a taxa mínima precisa ser menor que
+  a máxima, em cada variável.
+
+**`pumps/`** (bomba d'água — automática, só notificar, ou manual — também sem
+`pumps.routes.js` próprio: as rotas moram em `devices.routes.js`, ver abaixo)
+- `pumps.service.js` — `getOrCreate()` (cria a configuração padrão da bomba na primeira
+  vez que é referenciada), `updateConfig()`, `setManualState()` (toggle manual — chama
+  `getOrCreate()` primeiro, para não falhar num dispositivo cuja `Pump` ainda não existe),
+  `evaluateMeasurement()` (a lógica de "liga sozinha depois de X minutos secos", ver
+  [seção 5.8b](09-aula-completa-do-sistema.md#58b-módulo-pumps-quando-a-bomba-liga-sozinha)).
+- `pumps.validation.js` — schemas Zod de configuração (`mode`, `moistureThreshold`,
+  `belowThresholdMinutes`) e do toggle manual.
 
 **`alerts/`** (o motor de notificações)
 - `alerts.routes.js` — `GET /alerts` (lista paginada), `GET /alerts/summary`
@@ -343,6 +367,8 @@ Resumo rápido de cada um:
 - **`alerts.test.js`** — o motor de alertas (abertura, atualização de pico,
   fechamento, reabertura).
 - **`settings.test.js`** — cálculo de limites e validação de valores incoerentes.
+- **`pumps.test.js`** — modos automático/só notificar/manual, contagem do tempo seco,
+  toggle manual num dispositivo recém-criado (sem `Pump` ainda).
 - **`history.test.js`** — filtros, paginação e exportação CSV.
 - **`passwordManagement.test.js`** — troca de senha logada e fluxo completo de
   "esqueci minha senha".
@@ -399,7 +425,7 @@ Resumo rápido de cada um:
   src="/src/main.jsx">` é o que inicia a aplicação.
 - **`README.md`** — documentação de uso do frontend isoladamente: configuração,
   como rodar, estrutura de pastas, e as decisões relevantes (autenticação por cookie,
-  polling em vez de WebSocket, simulação automática, fuso horário).
+  polling em vez de WebSocket, fuso horário).
 - **`public/favicon.svg`** — o ícone exibido na aba do navegador.
 - **`public/icons.svg`** — um arquivo com ícones SVG reunidos (a maior parte da
   interface, porém, usa emojis simples como ícone — ver `Layout.jsx` abaixo — este
@@ -437,7 +463,7 @@ Resumo rápido de cada um:
 - **`Layout.jsx`** — a "moldura" comum a toda página logada: barra lateral de
   navegação (com os 6 itens de menu e seus ícones em emoji), cabeçalho mobile, avatar
   e botão de sair, e a bolinha de contagem de notificações não lidas (atualizada por
-  polling a cada 10s). Ver [seção 6.2](09-aula-completa-do-sistema.md#62-contextos-globais)
+  polling a cada 5s). Ver [seção 6.2](09-aula-completa-do-sistema.md#62-contextos-globais)
   para o contexto de autenticação que ele consome.
 - **`ProtectedRoute.jsx`** — envolve qualquer página que exige login: mostra
   "Carregando…" enquanto `AuthContext` ainda não confirmou a sessão, redireciona para
@@ -477,17 +503,22 @@ Resumo rápido de cada um:
   contas do backend (seção 5.4 do documento 09).
 - **`ResetPassword.jsx`** — lê o `token` da URL (`useSearchParams`), pede a nova
   senha duas vezes, e redireciona para o login 2,5 segundos após o sucesso.
-- **`Dashboard.jsx`** — a página mais complexa do frontend: cartões de métrica,
-  gráficos de linha com seletor de período, seletor de dispositivo, resumo dos outros
-  dispositivos, e a simulação automática de leituras a cada 2 segundos. Detalhada por
-  completo na [seção 6.4 do documento 09](09-aula-completa-do-sistema.md#64-página-por-página).
+- **`Dashboard.jsx`** — a página mais complexa do frontend: cartões de métrica
+  (temperatura, umidade do ar e, quando o dispositivo tem o sensor, umidade do solo),
+  painel de controle da bomba d'água, gráficos de linha com seletor de período, seletor
+  de dispositivo e resumo dos outros dispositivos — tudo atualizado por polling a cada 3
+  segundos. Não existe mais simulação automática de leituras: um dispositivo sem
+  hardware real enviando dados aparece simplesmente como offline. Detalhada por completo
+  na [seção 6.4 do documento 09](09-aula-completa-do-sistema.md#64-página-por-página).
 - **`History.jsx`** — tabela paginada e ordenável, painel de filtros colapsável
-  (período, dispositivo, faixas de valor com *debounce*, situação por variável) e
-  exportação CSV.
-- **`Settings.jsx`** — duas abas: "Valores" (ideal/tolerância obrigatórios por
-  variável, taxa mín/máx opcional, prévia da faixa calculada, interruptor de
-  notificação por variável) e "Aparência" (tema, cor de destaque, tamanho de fonte,
-  redução de movimento).
+  (período, dispositivo, faixas de valor — incluindo umidade do solo — com *debounce*,
+  situação por variável) e exportação CSV.
+- **`Settings.jsx`** — por dispositivo (um seletor no topo da tela quando há mais de
+  um): abas "Valores" (ideal/tolerância obrigatórios por variável — temperatura, umidade
+  do ar, umidade do solo —, taxa mín/máx opcional, prévia da faixa calculada,
+  interruptor de notificação por variável), "Bomba d'água" (modo automático/só
+  notificar/manual, limite de umidade, minutos de espera) e "Aparência" (tema, cor de
+  destaque, tamanho de fonte, redução de movimento).
 - **`Devices.jsx`** — lista de dispositivos com status (online/atenção/offline),
   ações de ativar/desativar, regenerar token e remover, e formulário de cadastro.
 - **`Notifications.jsx`** — alertas agrupados por dispositivo em abas, marcando como
@@ -510,8 +541,12 @@ função por endpoint, sem nenhuma lógica de interface misturada.
 - **`users.js`** — `updateProfile`, `changePassword`, `deleteAccount`.
 - **`devices.js`** — `listDevices`, `createDevice`, `updateDevice`, `deleteDevice`,
   `rotateDeviceSecret`.
-- **`measurements.js`** — `getLatest`, `simulateMeasurement`.
-- **`settings.js`** — `getSettings`, `updateSettings`.
+- **`measurements.js`** — só `getLatest` (não existe mais `simulateMeasurement` — o
+  endpoint de simulação foi removido, seção 3.3).
+- **`settings.js`** — `getSettings(deviceId)`, `updateSettings(deviceId, data)` —
+  ambos por dispositivo, batendo em `/devices/:id/settings`.
+- **`pumps.js`** — `getPump(deviceId)`, `updatePump(deviceId, data)`,
+  `togglePump(deviceId, isOn)` — batendo em `/devices/:id/pump*`.
 - **`alerts.js`** — `listAlerts`, `getAlertsSummary`, `markAlertRead`.
 - **`history.js`** — `getHistory`, e `buildExportUrl` (monta a URL de exportação CSV
   para ser aberta diretamente pelo navegador via `window.open`, em vez de baixada via
@@ -533,8 +568,11 @@ função por endpoint, sem nenhuma lógica de interface misturada.
   7/30 dias", "Personalizado") e `computeRange()`, que converte cada atalho num par de
   datas — usado tanto no Dashboard quanto no Histórico.
 - **`deviceStatus.js`** — `getDeviceStatus()`: classifica um dispositivo como
-  online (🟢, comunicou nos últimos 5 minutos), "sem comunicação recente" (🟡, até 30
-  minutos) ou offline (🔴, mais que isso, ou nunca comunicou).
+  online (🟢, comunicou nos últimos 30 segundos), "sem comunicação recente" (🟡, até 2
+  minutos) ou offline (🔴, mais que isso, ou nunca comunicou). Limiares reduzidos de 5
+  e 30 minutos depois que o sistema passou a depender só de leituras reais do ESP32
+  (que chegam a cada poucos segundos) — os valores antigos deixavam o status "preso"
+  em Online por tempo demais depois que o dispositivo já tinha ficado sem comunicação.
 - **`alertLabels.js`** — só dois dicionários de tradução: `VARIABLE_LABEL`
   (`temperature`→"Temperatura", `humidity`→"Umidade") e `DIRECTION_LABEL`
   (`above_max`→"acima do limite", `below_min`→"abaixo do limite"), usados na tela de
