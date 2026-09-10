@@ -242,7 +242,7 @@ a seção 6.3).
 
 ## 4. O banco de dados, tabela por tabela
 
-O esquema completo vive em `backend/prisma/schema.prisma`. São 5 tabelas e 3 enums
+O esquema completo vive em `backend/prisma/schema.prisma`. São 6 tabelas e 4 enums
 (listas fixas de valores possíveis). Vamos ver cada uma.
 
 ### `User` — usuários da plataforma
@@ -262,10 +262,12 @@ model User {
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
 
   devices  Device[]
-  settings Setting?
   alerts   Alert[]
 }
 ```
+
+(`settings` e `pump` **não** ficam mais no `User` — desde que passaram a ser por
+dispositivo, ver `Setting`/`Pump` abaixo, cada relação mora em `Device`.)
 
 Pontos que valem explicação:
 
@@ -301,9 +303,19 @@ model Device {
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   measurements Measurement[]
   alerts       Alert[]
+  settings     Setting?
+  pump         Pump?
 }
 ```
 
+- `settings Setting?` e `pump Pump?`: cada dispositivo tem sua **própria** configuração
+  de limites e sua **própria** bomba d'água — dois sensores do mesmo usuário podem
+  monitorar ambientes bem diferentes (uma estufa e uma geladeira, por exemplo), então não
+  faria sentido uma única faixa "universal" valer para todos os dispositivos da conta.
+  Isso não foi assim desde o início: numa versão anterior, `Setting` pendurava direto em
+  `User` (1 configuração por conta inteira) — a mudança para 1-para-1 com `Device` veio
+  depois, junto da adição do sensor de umidade do solo e da bomba (seção 5.8 e a nova
+  seção sobre o módulo `pumps`).
 - `deviceIdentifier` é o "nome público" do dispositivo (ex.: `ESP32-A1B2C3`) — é o que
   vai dentro do JSON que o ESP32 manda. `deviceSecretHash` é o hash do **token secreto**
   (equivalente a uma senha) que autentica o dispositivo — nunca o texto puro.
@@ -321,16 +333,17 @@ model Device {
   agora, não preciso mais simular para ele" (ver `measurements.service.js` na seção 5.7
   e o Dashboard na seção 6.4).
 
-### `Measurement` — cada leitura de temperatura/umidade
+### `Measurement` — cada leitura de temperatura, umidade do ar e umidade do solo
 
 ```prisma
 model Measurement {
-  id          String   @id @default(uuid())
-  deviceId    String   @map("device_id")
-  temperature Decimal  @db.Decimal(5, 2)
-  humidity    Decimal  @db.Decimal(5, 2)
-  measuredAt  DateTime @map("measured_at") @db.Timestamptz(3)
-  receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
+  id           String   @id @default(uuid())
+  deviceId     String   @map("device_id")
+  temperature  Decimal  @db.Decimal(5, 2)
+  humidity     Decimal  @db.Decimal(5, 2)
+  soilMoisture Decimal? @map("soil_moisture") @db.Decimal(5, 2)
+  measuredAt   DateTime @map("measured_at") @db.Timestamptz(3)
+  receivedAt   DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
 
   device Device  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   alerts Alert[]
@@ -342,6 +355,11 @@ model Measurement {
 - `Decimal(5, 2)` é um número com até 5 dígitos totais, 2 depois da vírgula (ex.:
   `999.99`) — mais preciso que `float` para esse tipo de dado, sem os arredondamentos
   estranhos que ponto flutuante binário pode causar.
+- `soilMoisture` é **opcional** (o `?`), diferente de `temperature`/`humidity`: nem todo
+  dispositivo tem o sensor de umidade do solo instalado (só quem também controla uma
+  bomba de irrigação, normalmente). Uma leitura sem esse sensor simplesmente grava `null`
+  ali — o resto do sistema (status de solo, motor de alertas, bomba) sabe ignorar esse
+  campo quando ele vem vazio, em vez de travar ou tratar como "zero".
 - `measuredAt` é quando a leitura **aconteceu** de verdade (segundo o relógio do ESP32,
   sincronizado por NTP); `receivedAt` é quando o **servidor recebeu** essa leitura — em
   geral são quase o mesmo instante, mas podem divergir se o ESP32 ficar sem sincronizar
@@ -352,37 +370,45 @@ model Measurement {
   toda consulta filtra por dispositivo e ordena por data mais recente primeiro, o índice
   foi desenhado exatamente para esse padrão de acesso.
 
-### `Setting` — preferências de limites por usuário
+### `Setting` — preferências de limites por dispositivo
 
 ```prisma
 model Setting {
-  id                   String   @id @default(uuid())
-  userId               String   @unique @map("user_id")
-  idealTemperature     Decimal  @default(25) @map("ideal_temperature") @db.Decimal(5, 2)
-  temperatureTolerance Decimal  @default(2) @map("temperature_tolerance") @db.Decimal(5, 2)
-  temperatureMin       Decimal? @map("temperature_min") @db.Decimal(5, 2)
-  temperatureMax       Decimal? @map("temperature_max") @db.Decimal(5, 2)
-  idealHumidity        Decimal  @default(60) @map("ideal_humidity") @db.Decimal(5, 2)
-  humidityTolerance    Decimal  @default(10) @map("humidity_tolerance") @db.Decimal(5, 2)
-  humidityMin          Decimal? @map("humidity_min") @db.Decimal(5, 2)
-  humidityMax          Decimal? @map("humidity_max") @db.Decimal(5, 2)
-  notifyTemperature    Boolean  @default(true) @map("notify_temperature")
-  notifyHumidity       Boolean  @default(true) @map("notify_humidity")
-  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+  id                    String   @id @default(uuid())
+  deviceId              String   @unique @map("device_id")
+  idealTemperature      Decimal  @default(25) @map("ideal_temperature") @db.Decimal(5, 2)
+  temperatureTolerance  Decimal  @default(2) @map("temperature_tolerance") @db.Decimal(5, 2)
+  temperatureMin        Decimal? @map("temperature_min") @db.Decimal(5, 2)
+  temperatureMax        Decimal? @map("temperature_max") @db.Decimal(5, 2)
+  idealHumidity         Decimal  @default(60) @map("ideal_humidity") @db.Decimal(5, 2)
+  humidityTolerance     Decimal  @default(10) @map("humidity_tolerance") @db.Decimal(5, 2)
+  humidityMin           Decimal? @map("humidity_min") @db.Decimal(5, 2)
+  humidityMax           Decimal? @map("humidity_max") @db.Decimal(5, 2)
+  idealSoilMoisture     Decimal  @default(40) @map("ideal_soil_moisture") @db.Decimal(5, 2)
+  soilMoistureTolerance Decimal  @default(15) @map("soil_moisture_tolerance") @db.Decimal(5, 2)
+  soilMoistureMin       Decimal? @map("soil_moisture_min") @db.Decimal(5, 2)
+  soilMoistureMax       Decimal? @map("soil_moisture_max") @db.Decimal(5, 2)
+  notifyTemperature     Boolean  @default(true) @map("notify_temperature")
+  notifyHumidity        Boolean  @default(true) @map("notify_humidity")
+  notifySoilMoisture    Boolean  @default(true) @map("notify_soil_moisture")
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
 }
 ```
 
-`userId String @unique` é o que faz essa relação ser **1 para 1** (não 1 para N): o
-Prisma não deixa existir duas linhas de `Setting` com o mesmo `userId`. A lógica de como
-esses campos viram uma faixa mín/máx está em `settings.service.js`, explicada na seção
-5.8.
+`deviceId String @unique` é o que faz essa relação ser **1 para 1** (não 1 para N): o
+Prisma não deixa existir duas linhas de `Setting` com o mesmo `deviceId`. Os três blocos
+de campos (temperatura, umidade do ar, umidade do solo) seguem exatamente o mesmo
+padrão — ideal + tolerância obrigatórios, mín/máx opcionais que substituem um lado do
+cálculo quando definidos, e um interruptor de notificação independente por variável. A
+lógica de como esses campos viram uma faixa mín/máx está em `settings.service.js`,
+explicada na seção 5.8.
 
 ### `Alert` — os eventos de anomalia
 
 ```prisma
-enum AlertVariable { temperature humidity }
+enum AlertVariable { temperature humidity soil_moisture }
 enum AlertDirection { above_max below_min }
 enum AlertStatus { active resolved }
 
@@ -414,6 +440,50 @@ ficar acima do limite por 20 leituras seguidas, isso gera **um único** registro
 `Alert` (que vai atualizando seu `peakValue` a cada leitura mais extrema), não 20
 notificações repetidas. Isso é o oposto de simplesmente "marcar" cada medição individual
 como boa/ruim — é gerenciar o **ciclo de vida** de uma anomalia.
+
+`variable` inclui `soil_moisture` desde que a umidade do solo virou uma terceira
+grandeza monitorada — o motor de alertas (seção 5.9) trata as três variáveis do mesmo
+jeito, só pulando `soil_moisture` quando a leitura não trouxer esse sensor.
+
+### `Pump` — a bomba d'água ligada ao sensor de umidade do solo
+
+```prisma
+enum PumpMode { automatic notify_only manual }
+
+model Pump {
+  id                    String   @id @default(uuid())
+  deviceId              String   @unique @map("device_id")
+  mode                  PumpMode @default(notify_only)
+  moistureThreshold     Decimal  @default(30) @map("moisture_threshold") @db.Decimal(5, 2)
+  belowThresholdMinutes Int      @default(30) @map("below_threshold_minutes")
+  isOn                  Boolean  @default(false) @map("is_on")
+  turnedOnAt            DateTime? @map("turned_on_at") @db.Timestamptz(3)
+  belowThresholdSince   DateTime? @map("below_threshold_since") @db.Timestamptz(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+}
+```
+
+Assim como `Setting`, é 1-para-1 com `Device` — cada dispositivo tem no máximo uma
+bomba. Os campos mais interessantes:
+
+- `mode`: define o que acontece quando o solo fica seco. **`automatic`** liga o relé
+  sozinha; **`notify_only`** nunca liga sozinha, só deixa o motor de alertas notificar
+  (`Setting.notifySoilMoisture`); **`manual`** só muda de estado por comando explícito do
+  usuário, em qualquer um dos três modos (o botão "Ligar agora"/"Desligar agora" da tela
+  funciona sempre, independente do modo escolhido).
+- `moistureThreshold`/`belowThresholdMinutes`: o "valor estipulado" e o "período
+  estipulado" da regra — a umidade do solo precisa ficar **abaixo** de
+  `moistureThreshold` por **pelo menos** `belowThresholdMinutes` minutos seguidos antes
+  da bomba ligar sozinha (só em modo `automatic`).
+- `isOn`/`turnedOnAt`: o estado atual do relé e desde quando está ligado — é isso que o
+  firmware do ESP32 lê a cada leitura enviada para decidir se aciona o relé físico (seção
+  7.5).
+- `belowThresholdSince`: campo interno, não editável pelo usuário — marca desde quando a
+  leitura mais recente está continuamente abaixo do limite. É zerado assim que uma
+  leitura volta a ficar dentro do limite, para o "período estipulado" ser sempre contado
+  a partir da seca **atual**, nunca acumulado entre janelas separadas.
 
 ## 5. Como o backend é organizado
 
@@ -699,9 +769,24 @@ horário do **próprio servidor** como substituto quando o timestamp enviado é 
 inválido, ou implausível — a leitura não se perde, só o "quando exatamente aconteceu"
 fica com uma precisão um pouco menor.
 
-Depois de gravar a medição, `create()` sempre busca as configurações do usuário, calcula
-os limites (seção 5.8) e chama o motor de alertas (seção 5.9) — toda leitura, real ou
-simulada, passa por essa mesma verificação.
+Depois de gravar a medição, `create()` sempre busca as configurações **daquele
+dispositivo** (não mais do usuário — seção 4), calcula os limites (seção 5.8) e chama o
+motor de alertas (seção 5.9) — toda leitura, real ou simulada, passa por essa mesma
+verificação. Se a leitura trouxer `soilMoisture` (nem toda leitura traz, seção 4), também
+chama `pumpsService.evaluateMeasurement()` (seção 5.8b), que decide se a bomba liga
+sozinha.
+
+A rota usada pelo ESP32 físico devolve, na resposta de sucesso, o estado atual da bomba:
+
+```js
+const pump = await pumpsService.getOrCreate(req.device.id);
+res.status(201).json({ id, measured_at, received_at, pump: { isOn: pump.isOn } });
+```
+
+É assim que o firmware sabe se deve acionar o relé (seção 7.5) sem precisar de nenhuma
+autenticação extra — ele já está autenticado por `X-Device-Key` nesta mesma requisição, e
+o campo `pump.isOn` reflete tanto o modo automático quanto um comando manual dado pelo
+app, o que vier mais recente.
 
 ### 5.8 Módulo `settings`: cálculo da faixa aceitável
 
@@ -723,7 +808,8 @@ function computeThresholds(settings) {
       ? Number(settings.humidityMax)
       : Math.min(100, Number(settings.idealHumidity) + Number(settings.humidityTolerance)),
   };
-  return { temperature, humidity };
+  const soilMoisture = { /* mesmo cálculo, com os campos idealSoilMoisture/soilMoistureTolerance/soilMoistureMin/Max */ };
+  return { temperature, humidity, soilMoisture };
 }
 ```
 
@@ -731,8 +817,9 @@ A regra: por padrão, a faixa aceitável é `ideal ± tolerância` (ex.: ideal 2
 tolerância 2°C → faixa de 23°C a 27°C). Mas se o usuário definir uma **taxa mínima ou
 máxima explícita** em Configurações, ela substitui aquele lado específico do cálculo —
 permite uma faixa assimétrica (ex.: "não me importo se esfriar, só me avise se passar de
-28°C"). A umidade, quando calculada automaticamente, é sempre limitada entre 0 e 100
-(`Math.max`/`Math.min`) porque uma porcentagem fora dessa faixa não existe fisicamente.
+28°C"). Umidade do ar e umidade do solo, quando calculadas automaticamente, são sempre
+limitadas entre 0 e 100 (`Math.max`/`Math.min`) porque uma porcentagem fora dessa faixa
+não existe fisicamente — temperatura não tem esse limite.
 
 Essa mesma função roda **duas vezes**, em dois lugares diferentes, com o mesmo
 resultado: uma vez no backend (para decidir se dispara alerta) e uma cópia equivalente
@@ -740,21 +827,71 @@ em `frontend/src/pages/Settings.jsx` (só para mostrar uma prévia da faixa ao u
 antes mesmo de salvar) — a fonte da verdade continua sendo sempre o backend; a cópia no
 frontend é só uma conveniência visual.
 
+Desde que `Setting` passou a ser por **dispositivo** (seção 4), toda essa lógica é
+idêntica — só muda a chave usada para buscar a configuração (`deviceId` em vez de
+`userId`). Isso importa especialmente no histórico (`history.service.js`): ao listar
+medições de vários dispositivos ao mesmo tempo, cada linha é avaliada contra os limites
+do **seu próprio** dispositivo, nunca uma faixa "global" aplicada a todo mundo.
+
+### 5.8b Módulo `pumps`: quando a bomba liga sozinha
+
+`pumpsService.evaluateMeasurement(device, measurement)` roda depois do motor de alertas,
+só quando a leitura trouxe `soilMoisture` (seção 5.7), e só ela decide o estado de
+`Pump.isOn` além do endpoint de controle manual:
+
+```js
+async function evaluateMeasurement(device, measurement) {
+  const pump = await getOrCreate(device.id);
+  const isBelowThreshold = Number(measurement.soilMoisture) < Number(pump.moistureThreshold);
+
+  if (!isBelowThreshold) {
+    // volta ao normal: zera belowThresholdSince e, se estava ligada em modo
+    // automatic, desliga sozinha também.
+  } else if (pump.belowThresholdSince == null) {
+    // primeira leitura seca da vez: só começa a contar o tempo, ainda não liga.
+  } else if (pump.mode === 'automatic' && !pump.isOn) {
+    // já vem contando: se o tempo decorrido >= belowThresholdMinutes, liga agora.
+  }
+}
+```
+
+Repare a assimetria proposital: **qualquer** modo conta havá quanto tempo o solo está
+seco (`belowThresholdSince`) — isso alimenta a tela mesmo em modo `notify_only`/`manual`,
+onde o usuário só quer *ver* essa informação. Mas só o modo `automatic` usa essa contagem
+para de fato acionar o relé. É o mesmo motivo pelo qual a bomba também **desliga**
+sozinha ao normalizar apenas nesse modo: nos outros dois, o estado do relé é inteiramente
+responsabilidade do comando manual do usuário — o sistema nunca desliga uma bomba que o
+próprio usuário ligou de propósito.
+
+Igual ao motor de alertas, essa função roda para toda leitura com sensor de solo, real ou
+simulada — o `seed.js` do banco de demonstração até reaproveita a mesma função para gerar
+um histórico simulado consistente (uma janela de seca de 20 minutos que efetivamente liga
+a bomba automática de demonstração, e depois desliga sozinha ao normalizar).
+
 ### 5.9 O motor de alertas, em detalhe
 
 Esta é a parte mais sofisticada do backend, em `alerts.service.js`. A função
 `evaluateMeasurement` roda depois de **toda** medição gravada (seção 5.7) e decide o que
-fazer com cada uma das duas variáveis (temperatura, umidade) separadamente:
+fazer com cada uma das três variáveis (temperatura, umidade do ar, umidade do solo)
+separadamente:
 
 ```js
-async function evaluateMeasurement(measurement, device, thresholds, notifyFlags = { temperature: true, humidity: true }) {
+const VARIABLES = ['temperature', 'humidity', 'soilMoisture'];
+// O enum do banco usa snake_case; o resto do código usa camelCase — este mapa só existe
+// nessa borda, ao gravar/consultar o campo `variable` do Alert.
+const DB_VARIABLE = { temperature: 'temperature', humidity: 'humidity', soilMoisture: 'soil_moisture' };
+
+async function evaluateMeasurement(measurement, device, thresholds, notifyFlags = { temperature: true, humidity: true, soilMoisture: true }) {
   for (const variable of VARIABLES) {
+    if (measurement[variable] == null) continue; // sem sensor de solo nesta leitura: nada a avaliar
+
     const value = Number(measurement[variable]);
     const { min, max } = thresholds[variable];
     const isOutOfRange = value < min || value > max;
+    const dbVariable = DB_VARIABLE[variable];
 
     const activeAlert = await prisma.alert.findFirst({
-      where: { deviceId: device.id, variable, status: 'active' },
+      where: { deviceId: device.id, variable: dbVariable, status: 'active' },
     });
 
     if (isOutOfRange) {
@@ -804,8 +941,9 @@ modelagem como **evento com início e fim**, em vez de "marcar cada leitura ruim
 individualmente", que evita o spam de notificação (seção 45 do escopo original do
 projeto).
 
-O parâmetro `notifyFlags` (vindo de `Setting.notifyTemperature`/`notifyHumidity`, editável
-em Configurações) só entra em ação **na hora de abrir um alerta novo** — repare na
+O parâmetro `notifyFlags` (vindo de
+`Setting.notifyTemperature`/`notifyHumidity`/`notifySoilMoisture`, editável em
+Configurações) só entra em ação **na hora de abrir um alerta novo** — repare na
 condição `!notifyFlags[variable] && !activeAlert`. Se o usuário desligar notificação de
 umidade, mas já havia um alerta de umidade em andamento antes de desligar, esse alerta
 **continua** sendo fechado normalmente quando a leitura voltar ao normal — ele nunca
@@ -819,8 +957,16 @@ com a notificação desligada — só o alerta (a notificação) que não é ger
 **lista de condições combinadas com E** (`AND: conditions`), em vez de ir remendando um
 único objeto — o comentário no código explica que a abordagem anterior tinha um bug real
 (um filtro podia sobrescrever outro). Cada filtro (período, faixa de temperatura, faixa
-de umidade, situação por variável) vira uma condição independente adicionada à lista, o
-que evita esse tipo de conflito.
+de umidade do ar, faixa de umidade do solo, situação por variável) vira uma condição
+independente adicionada à lista, o que evita esse tipo de conflito.
+
+Como `Setting` é por dispositivo (seção 4), o filtro de "situação" (`normal`/`fora do
+limite`) fica mais interessante quando a consulta abrange **vários** dispositivos ao
+mesmo tempo (nenhum `deviceId` específico escolhido): em vez de uma única faixa aplicada
+a todas as linhas, o backend monta um `OR` de sub-condições, uma por dispositivo, cada
+uma já com o limite **daquele** dispositivo — assim, filtrar "temperatura fora do
+limite" continua correto mesmo quando dois dispositivos têm faixas bem diferentes (uma
+estufa e uma geladeira, por exemplo).
 
 A exportação (`GET /api/history/export`) reaproveita a mesma função de filtros, mas
 limita a `MAX_EXPORT_ROWS = 5000` linhas e monta o CSV manualmente (não usa nenhuma
