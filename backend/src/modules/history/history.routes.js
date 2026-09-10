@@ -20,7 +20,8 @@ router.get('/export', validateQuery(historyQuerySchema), async (req, res, next) 
   try {
     const items = await historyService.listForExport(req.userId, req.query);
 
-    const header = 'data,horario,temperatura_c,umidade_pct,status_temperatura,status_umidade\n';
+    const header =
+      'data,horario,temperatura_c,umidade_pct,umidade_solo_pct,status_temperatura,status_umidade,status_umidade_solo\n';
     const rows = items
       .map((item) => {
         const date = new Date(item.measuredAt);
@@ -31,8 +32,10 @@ router.get('/export', validateQuery(historyQuerySchema), async (req, res, next) 
           timeStr,
           item.temperature,
           item.humidity,
+          item.soilMoisture ?? '',
           item.temperatureStatus,
           item.humidityStatus,
+          item.soilMoistureStatus ?? '',
         ].join(',');
       })
       .join('\n');

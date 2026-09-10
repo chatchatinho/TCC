@@ -49,6 +49,7 @@ router.get('/latest', requireAuth, async (req, res, next) => {
             id: measurement.id,
             temperature: measurement.temperature,
             humidity: measurement.humidity,
+            soilMoisture: measurement.soilMoisture,
             measuredAt: measurement.measuredAt,
             ...status,
           },

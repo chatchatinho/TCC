@@ -48,13 +48,33 @@ components:
         humidityTolerance: { type: number }
         humidityMin: { type: number, nullable: true }
         humidityMax: { type: number, nullable: true }
+        idealSoilMoisture: { type: number }
+        soilMoistureTolerance: { type: number }
+        soilMoistureMin: { type: number, nullable: true }
+        soilMoistureMax: { type: number, nullable: true }
         notifyTemperature: { type: boolean }
         notifyHumidity: { type: boolean }
+        notifySoilMoisture: { type: boolean }
+    Pump:
+      type: object
+      description: >
+        Bomba d'água ligada ao sensor de umidade do solo do dispositivo (1:1). Em modo
+        automatic, liga sozinha quando a umidade fica abaixo de moistureThreshold por
+        belowThresholdMinutes seguidos, e desliga sozinha assim que a umidade volta ao
+        normal. Nos outros modos, isOn só muda pelo endpoint de controle manual.
+      properties:
+        deviceId: { type: string, format: uuid }
+        mode: { type: string, enum: [automatic, notify_only, manual] }
+        moistureThreshold: { type: number }
+        belowThresholdMinutes: { type: integer }
+        isOn: { type: boolean }
+        turnedOnAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time }
     Alert:
       type: object
       properties:
         id: { type: string, format: uuid }
-        variable: { type: string, enum: [temperature, humidity] }
+        variable: { type: string, enum: [temperature, humidity, soil_moisture] }
         direction: { type: string, enum: [above_max, below_min] }
         peakValue: { type: number }
         limitMin: { type: number }
@@ -178,6 +198,49 @@ paths:
       responses:
         "200": { description: OK }
         "404": { description: Dispositivo não encontrado }
+  /devices/{id}/pump:
+    get:
+      summary: Retorna a bomba d'água de um dispositivo do usuário (cria padrão se não existir)
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: OK }
+        "404": { description: Dispositivo não encontrado }
+    put:
+      summary: Atualiza modo, limite de umidade e período da bomba (nunca liga/desliga o relé)
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mode, moistureThreshold, belowThresholdMinutes]
+              properties:
+                mode: { type: string, enum: [automatic, notify_only, manual] }
+                moistureThreshold: { type: number, example: 30 }
+                belowThresholdMinutes: { type: integer, example: 30 }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { properties: { pump: { $ref: "#/components/schemas/Pump" } } } } } }
+        "404": { description: Dispositivo não encontrado }
+  /devices/{id}/pump/toggle:
+    post:
+      summary: Liga ou desliga a bomba manualmente (funciona em qualquer modo)
+      security: [{ sessionCookie: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isOn]
+              properties:
+                isOn: { type: boolean }
+      responses:
+        "200": { description: OK, content: { application/json: { schema: { properties: { pump: { $ref: "#/components/schemas/Pump" } } } } } }
+        "404": { description: Dispositivo não encontrado }
   /measurements:
     post:
       summary: Recebe uma leitura enviada pelo ESP32 (autenticação de dispositivo, não de usuário)
@@ -193,6 +256,10 @@ paths:
                 device_id: { type: string, example: ESP32-001 }
                 temperature: { type: number, example: 25.4 }
                 humidity: { type: number, example: 61.2 }
+                soilMoisture:
+                  type: number
+                  example: 42.5
+                  description: Opcional — só enviado por dispositivos com sensor de umidade do solo.
                 timestamp: { type: string, format: date-time }
       responses:
         "201": { description: Medição registrada }
@@ -221,7 +288,13 @@ paths:
         - { name: temperatureMax, in: query, schema: { type: number } }
         - { name: humidityMin, in: query, schema: { type: number } }
         - { name: humidityMax, in: query, schema: { type: number } }
-        - { name: status, in: query, schema: { type: string, enum: [normal, out_of_range] } }
+        - { name: soilMoistureMin, in: query, schema: { type: number } }
+        - { name: soilMoistureMax, in: query, schema: { type: number } }
+        - { name: temperatureStatus, in: query, schema: { type: string, enum: [normal, out_of_range] } }
+        - { name: humidityStatus, in: query, schema: { type: string, enum: [normal, out_of_range] } }
+        - { name: soilMoistureStatus, in: query, schema: { type: string, enum: [normal, out_of_range] } }
+        - { name: sortBy, in: query, schema: { type: string, enum: [measuredAt, temperature, humidity, soilMoisture] } }
+        - { name: sortOrder, in: query, schema: { type: string, enum: [asc, desc] } }
         - { name: page, in: query, schema: { type: integer, default: 1 } }
         - { name: pageSize, in: query, schema: { type: integer, default: 50 } }
       responses:

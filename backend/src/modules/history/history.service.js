@@ -40,12 +40,21 @@ async function buildWhere(userId, filters) {
     conditions.push({ humidity });
   }
 
+  // Linhas sem sensor de solo (soilMoisture nulo) nunca batem com gte/lte no SQL —
+  // ficam de fora do filtro automaticamente, sem precisar de um caso especial aqui.
+  if (filters.soilMoistureMin !== undefined || filters.soilMoistureMax !== undefined) {
+    const soilMoisture = {};
+    if (filters.soilMoistureMin !== undefined) soilMoisture.gte = filters.soilMoistureMin;
+    if (filters.soilMoistureMax !== undefined) soilMoisture.lte = filters.soilMoistureMax;
+    conditions.push({ soilMoisture });
+  }
+
   // Filtros de situação por variável, independentes entre si — dá para combinar, ex.
   // "temperatura normal E umidade fora do limite" também é uma consulta válida. Cada
   // dispositivo agora tem sua própria faixa de limites, então a checagem vira um OR de
   // sub-condições por dispositivo (cada uma já restrita ao seu próprio deviceId), em vez
   // de uma única faixa aplicada a todas as linhas.
-  if (filters.temperatureStatus || filters.humidityStatus) {
+  if (filters.temperatureStatus || filters.humidityStatus || filters.soilMoistureStatus) {
     const targetDeviceIds = filters.deviceId ? [filters.deviceId] : deviceIds;
     const thresholdsByDevice = await getThresholdsByDevice(targetDeviceIds);
 
@@ -67,6 +76,19 @@ async function buildWhere(userId, filters) {
           : { deviceId, OR: [{ humidity: { lt: humidity.min } }, { humidity: { gt: humidity.max } }] };
       });
       conditions.push({ OR: humidityConditions });
+    }
+
+    // Assim como no range de solo acima, uma leitura sem sensor (soilMoisture nulo)
+    // não bate com nenhuma das duas comparações abaixo — nem "normal" nem "fora do
+    // limite" a incluem, então esse filtro simplesmente ignora dispositivos sem sensor.
+    if (filters.soilMoistureStatus) {
+      const soilMoistureConditions = targetDeviceIds.map((deviceId) => {
+        const { soilMoisture } = thresholdsByDevice.get(deviceId);
+        return filters.soilMoistureStatus === 'normal'
+          ? { deviceId, soilMoisture: { gte: soilMoisture.min, lte: soilMoisture.max } }
+          : { deviceId, OR: [{ soilMoisture: { lt: soilMoisture.min } }, { soilMoisture: { gt: soilMoisture.max } }] };
+      });
+      conditions.push({ OR: soilMoistureConditions });
     }
   }
 
@@ -97,6 +119,7 @@ async function annotateStatus(measurements) {
     deviceId: m.deviceId,
     temperature: m.temperature,
     humidity: m.humidity,
+    soilMoisture: m.soilMoisture,
     measuredAt: m.measuredAt,
     ...settingsService.evaluateReadingStatus(m, thresholdsByDevice.get(m.deviceId)),
   }));

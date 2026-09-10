@@ -1,13 +1,18 @@
 # ESP32 — Firmware
 
-Firmware que lê temperatura e umidade de um sensor DHT11 e envia as leituras para a API
-do sistema web via HTTP(S), autenticado por dispositivo (seção 16/17 do escopo do TCC).
+Firmware que lê temperatura e umidade de um sensor DHT11 e, opcionalmente, umidade do
+solo de um higrômetro capacitivo, enviando as leituras para a API do sistema web via
+HTTP(S), autenticado por dispositivo (seção 16/17 do escopo do TCC). O acionamento da
+bomba d'água associada à umidade do solo é decidido pelo backend (ver `Setting`/`Pump` no
+sistema web) — este firmware só lê e envia o sensor, não controla o relé diretamente.
 
 ## Componentes
 
 - Placa ESP32 (qualquer dev board comum, ex. ESP32-DevKitC / NodeMCU-32S)
 - Sensor DHT11 (módulo de 3 pinos com resistor de pull-up embutido, ou o sensor "cru" de
   4 pinos + resistor de 10kΩ entre VCC e DATA)
+- Opcional: sensor de umidade do solo capacitivo (saída analógica), para dispositivos
+  usados também para irrigação
 
 ## Fiação
 
@@ -19,6 +24,19 @@ do sistema web via HTTP(S), autenticado por dispositivo (seção 16/17 do escopo
 
 O pino de dados é configurável em `src/Sensor.cpp` (`#define DHT_PIN 4`) caso sua fiação
 use outro GPIO.
+
+Sensor de umidade do solo (opcional):
+
+| Sensor | ESP32     |
+|--------|-----------|
+| VCC    | 3V3       |
+| GND    | GND       |
+| AOUT   | GPIO 34 (ADC1) |
+
+Habilitado e calibrado em `config.h` (`SOIL_MOISTURE_ENABLED`, `SOIL_MOISTURE_PIN`,
+`SOIL_MOISTURE_DRY_RAW`/`SOIL_MOISTURE_WET_RAW` — ver comentários em
+`config.example.h`). Use sempre um pino ADC1 (32-39): os pinos ADC2 do ESP32 não
+funcionam enquanto o Wi-Fi está ativo.
 
 ## Bibliotecas necessárias (Arduino IDE → Ferramentas → Gerenciar Bibliotecas)
 
@@ -43,6 +61,12 @@ Ferramentas → Placa → Gerenciador de Placas, caso ainda não tenha.
    #define DEVICE_ID "ESP32-001"
    #define DEVICE_TOKEN "token-copiado-da-tela-de-dispositivos"
    ```
+
+   Se este dispositivo tiver o sensor de umidade do solo, ajuste também
+   `SOIL_MOISTURE_ENABLED` para `true` e calibre `SOIL_MOISTURE_DRY_RAW`/
+   `SOIL_MOISTURE_WET_RAW` (comentários em `config.example.h` explicam como). Sem o
+   sensor, deixe `SOIL_MOISTURE_ENABLED` em `false` — o dispositivo continua funcionando
+   normalmente, só não aparece com dado de umidade do solo no sistema.
 
    `config.h` está no `.gitignore` — nunca é commitado, pois contém credenciais reais.
 

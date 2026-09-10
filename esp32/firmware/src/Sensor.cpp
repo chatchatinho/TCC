@@ -16,10 +16,45 @@
 #define HUMIDITY_MIN 0.0f
 #define HUMIDITY_MAX 100.0f
 
+// Sensor de umidade do solo (higrômetro capacitivo, saída analógica) é opcional —
+// SOIL_MOISTURE_ENABLED/SOIL_MOISTURE_PIN vêm de config.h, mas caem num padrão
+// "desabilitado" aqui se um config.h antigo (de antes desse recurso existir) não os
+// definir, para não quebrar a build de quem já tinha o firmware configurado.
+#ifndef SOIL_MOISTURE_ENABLED
+#define SOIL_MOISTURE_ENABLED false
+#endif
+#ifndef SOIL_MOISTURE_PIN
+#define SOIL_MOISTURE_PIN 34
+#endif
+
+// Leitura bruta do ADC (0-4095 no ESP32) em solo completamente seco (ao ar) e
+// totalmente encharcado — sensores capacitivos leem um valor MAIOR quanto mais seco
+// o solo está, o oposto do que a % de umidade deveria mostrar, daí a inversão no
+// mapeamento abaixo. Esses dois valores variam por sensor/fiação: calibre o seu
+// lendo SOIL_MOISTURE_PIN nas duas condições e ajuste as constantes aqui.
+#ifndef SOIL_MOISTURE_DRY_RAW
+#define SOIL_MOISTURE_DRY_RAW 3000
+#endif
+#ifndef SOIL_MOISTURE_WET_RAW
+#define SOIL_MOISTURE_WET_RAW 1200
+#endif
+
 static DHT dht(DHT_PIN, DHT_TYPE);
 
 void sensorSetup() {
   dht.begin();
+  if (SOIL_MOISTURE_ENABLED) {
+    pinMode(SOIL_MOISTURE_PIN, INPUT);
+  }
+}
+
+// Converte a leitura bruta do ADC em % de umidade do solo (0-100), usando a
+// calibração seco/molhado acima. constrain() evita que ruído fora da faixa calibrada
+// vire um valor fisicamente absurdo (negativo ou acima de 100%).
+static float readSoilMoisturePercent() {
+  int raw = analogRead(SOIL_MOISTURE_PIN);
+  float percent = map(raw, SOIL_MOISTURE_DRY_RAW, SOIL_MOISTURE_WET_RAW, 0, 100);
+  return constrain(percent, 0.0f, 100.0f);
 }
 
 SensorReading sensorRead() {
@@ -35,5 +70,9 @@ SensorReading sensorRead() {
     && reading.humidity >= HUMIDITY_MIN && reading.humidity <= HUMIDITY_MAX;
 
   reading.valid = isPlausible;
+
+  reading.hasSoilMoisture = SOIL_MOISTURE_ENABLED;
+  reading.soilMoisture = SOIL_MOISTURE_ENABLED ? readSoilMoisturePercent() : 0.0f;
+
   return reading;
 }

@@ -77,9 +77,38 @@ describe('isolamento entre usuários', () => {
       temperatureTolerance: 3,
       idealHumidity: 55,
       humidityTolerance: 15,
+      idealSoilMoisture: 40,
+      soilMoistureTolerance: 15,
       notifyTemperature: true,
       notifyHumidity: true,
+      notifySoilMoisture: true,
     });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('usuário B não pode ver a bomba do dispositivo de A (404)', async () => {
+    const { userB, device } = await setupTwoUsersWithDevice();
+
+    const res = await userB.agent.get(`/api/devices/${device.id}/pump`);
+
+    expect(res.status).toBe(404);
+  });
+
+  test('usuário B não pode alterar a configuração da bomba do dispositivo de A (404)', async () => {
+    const { userB, device } = await setupTwoUsersWithDevice();
+
+    const res = await userB.agent
+      .put(`/api/devices/${device.id}/pump`)
+      .send({ mode: 'manual', moistureThreshold: 30, belowThresholdMinutes: 30 });
+
+    expect(res.status).toBe(404);
+  });
+
+  test('usuário B não pode ligar/desligar manualmente a bomba do dispositivo de A (404)', async () => {
+    const { userB, device } = await setupTwoUsersWithDevice();
+
+    const res = await userB.agent.post(`/api/devices/${device.id}/pump/toggle`).send({ isOn: true });
 
     expect(res.status).toBe(404);
   });
@@ -114,6 +143,7 @@ describe('rotas privadas sem autenticação', () => {
   test.each([
     ['get', '/api/devices'],
     ['get', '/api/devices/any-id/settings'],
+    ['get', '/api/devices/any-id/pump'],
     ['get', '/api/history'],
     ['get', '/api/alerts'],
     ['get', '/api/measurements/latest'],

@@ -15,14 +15,18 @@ const initialFilters = {
   temperatureMax: '',
   humidityMin: '',
   humidityMax: '',
+  soilMoistureMin: '',
+  soilMoistureMax: '',
   temperatureStatus: '',
   humidityStatus: '',
+  soilMoistureStatus: '',
 };
 
 const SORT_COLUMNS = [
   { key: 'measuredAt', label: 'Data/Horário' },
   { key: 'temperature', label: 'Temperatura' },
   { key: 'humidity', label: 'Umidade' },
+  { key: 'soilMoisture', label: 'Umidade do solo' },
 ];
 
 // <input type="datetime-local"> espera "YYYY-MM-DDTHH:mm" em horário LOCAL — mesmo
@@ -208,7 +212,7 @@ export default function History() {
               </div>
             </FilterGroup>
 
-            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
               <FilterGroup label="Temperatura" accent="blue">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <SelectField label="Situação" value={filters.temperatureStatus} onChange={updateFilter('temperatureStatus')}>
@@ -260,6 +264,32 @@ export default function History() {
                   />
                 </div>
               </FilterGroup>
+
+              <FilterGroup label="Umidade do solo" accent="amber">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <SelectField label="Situação" value={filters.soilMoistureStatus} onChange={updateFilter('soilMoistureStatus')}>
+                    <option value="">Todas</option>
+                    <option value="normal">Normal</option>
+                    <option value="out_of_range">Fora do limite</option>
+                  </SelectField>
+                  <DebouncedField
+                    label="Mín (%)"
+                    value={filters.soilMoistureMin}
+                    onCommit={(v) => {
+                      setPage(1);
+                      setFilters((prev) => ({ ...prev, soilMoistureMin: v }));
+                    }}
+                  />
+                  <DebouncedField
+                    label="Máx (%)"
+                    value={filters.soilMoistureMax}
+                    onCommit={(v) => {
+                      setPage(1);
+                      setFilters((prev) => ({ ...prev, soilMoistureMax: v }));
+                    }}
+                  />
+                </div>
+              </FilterGroup>
             </div>
           </div>
         )}
@@ -280,19 +310,20 @@ export default function History() {
                 ))}
                 <th className="px-4 py-3">Status temperatura</th>
                 <th className="px-4 py-3">Status umidade</th>
+                <th className="px-4 py-3">Status umidade do solo</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Carregando…
                   </td>
                 </tr>
               )}
               {!loading && result.items.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400 dark:text-slate-500">
                     Nenhuma medição encontrada para os filtros selecionados.
                   </td>
                 </tr>
@@ -304,11 +335,15 @@ export default function History() {
                     <td className="px-4 py-2">{formatTime(item.measuredAt)}</td>
                     <td className="px-4 py-2">{formatNumber(item.temperature)} °C</td>
                     <td className="px-4 py-2">{formatNumber(item.humidity)} %</td>
+                    <td className="px-4 py-2">{item.soilMoisture != null ? `${formatNumber(item.soilMoisture)} %` : '—'}</td>
                     <td className="px-4 py-2">
                       <StatusBadge status={item.temperatureStatus} />
                     </td>
                     <td className="px-4 py-2">
                       <StatusBadge status={item.humidityStatus} />
+                    </td>
+                    <td className="px-4 py-2">
+                      {item.soilMoistureStatus != null ? <StatusBadge status={item.soilMoistureStatus} /> : '—'}
                     </td>
                   </tr>
                 ))}
@@ -327,6 +362,7 @@ export default function History() {
 const GROUP_ACCENTS = {
   blue: 'border-l-blue-400 dark:border-l-blue-500',
   teal: 'border-l-teal-400 dark:border-l-teal-500',
+  amber: 'border-l-amber-400 dark:border-l-amber-500',
   none: 'border-l-transparent',
 };
 

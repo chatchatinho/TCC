@@ -5,11 +5,18 @@ const { registerAndLogin } = require('./helpers/authClient');
 beforeEach(resetDb);
 afterAll(closeDb);
 
-// notifyTemperature/notifyHumidity são obrigatórios no payload (o frontend sempre
-// manda o estado completo do formulário) — este helper evita repetir os dois em cada
-// teste que não é sobre eles especificamente.
+// notifyTemperature/notifyHumidity/notifySoilMoisture e os valores de solo são
+// obrigatórios no payload (o frontend sempre manda o estado completo do formulário) —
+// este helper evita repetir tudo isso em cada teste que não é sobre eles especificamente.
 function payload(overrides) {
-  return { notifyTemperature: true, notifyHumidity: true, ...overrides };
+  return {
+    notifyTemperature: true,
+    notifyHumidity: true,
+    notifySoilMoisture: true,
+    idealSoilMoisture: 40,
+    soilMoistureTolerance: 15,
+    ...overrides,
+  };
 }
 
 // Cada dispositivo tem sua própria configuração de limites — os testes precisam de um
@@ -27,7 +34,11 @@ describe('GET /api/devices/:id/settings', () => {
     const res = await agent.get(`/api/devices/${device.id}/settings`);
 
     expect(res.status).toBe(200);
-    expect(res.body.thresholds).toEqual({ temperature: { min: 23, max: 27 }, humidity: { min: 50, max: 70 } });
+    expect(res.body.thresholds).toEqual({
+      temperature: { min: 23, max: 27 },
+      humidity: { min: 50, max: 70 },
+      soilMoisture: { min: 25, max: 55 },
+    });
     expect(res.body.settings.notifyTemperature).toBe(true);
     expect(res.body.settings.notifyHumidity).toBe(true);
   });
@@ -220,7 +231,15 @@ describe('PUT /api/devices/:id/settings — taxa mínima/máxima opcional', () =
 });
 
 describe('PUT /api/devices/:id/settings — notificar por variável', () => {
-  const BASE = { idealTemperature: 25, temperatureTolerance: 2, idealHumidity: 60, humidityTolerance: 10 };
+  const BASE = {
+    idealTemperature: 25,
+    temperatureTolerance: 2,
+    idealHumidity: 60,
+    humidityTolerance: 10,
+    idealSoilMoisture: 40,
+    soilMoistureTolerance: 15,
+    notifySoilMoisture: true,
+  };
 
   test('com notifyHumidity desligado, leitura de umidade fora do limite não cria alerta', async () => {
     const { agent, device, deviceSecret } = await registerWithDevice();
@@ -285,5 +304,94 @@ describe('PUT /api/devices/:id/settings — notificar por variável', () => {
     const humidityAlerts = alertsRes.body.alerts.filter((a) => a.variable === 'humidity');
     expect(humidityAlerts).toHaveLength(1);
     expect(humidityAlerts[0].status).toBe('resolved');
+  });
+});
+
+describe('PUT /api/devices/:id/settings — umidade do solo', () => {
+  test('valores válidos de solo são salvos e os limites recalculados', async () => {
+    const { agent, device } = await registerWithDevice();
+
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
+      payload({
+        idealTemperature: 25,
+        temperatureTolerance: 2,
+        idealHumidity: 60,
+        humidityTolerance: 10,
+        idealSoilMoisture: 45,
+        soilMoistureTolerance: 20,
+      }),
+    );
+
+    expect(res.status).toBe(200);
+    expect(res.body.thresholds.soilMoisture).toEqual({ min: 25, max: 65 });
+  });
+
+  test('umidade do solo fora de 0-100 é rejeitada com 400', async () => {
+    const { agent, device } = await registerWithDevice();
+
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
+      payload({
+        idealTemperature: 25,
+        temperatureTolerance: 2,
+        idealHumidity: 60,
+        humidityTolerance: 10,
+        idealSoilMoisture: 130,
+      }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  test('taxa mínima de solo maior ou igual à máxima é rejeitada com 400', async () => {
+    const { agent, device } = await registerWithDevice();
+
+    const res = await agent.put(`/api/devices/${device.id}/settings`).send(
+      payload({
+        idealTemperature: 25,
+        temperatureTolerance: 2,
+        idealHumidity: 60,
+        humidityTolerance: 10,
+        soilMoistureMin: 50,
+        soilMoistureMax: 20,
+      }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  test('com notifySoilMoisture desligado, leitura de solo fora do limite não cria alerta', async () => {
+    const { agent, device, deviceSecret } = await registerWithDevice();
+
+    await agent.put(`/api/devices/${device.id}/settings`).send(
+      payload({
+        idealTemperature: 25,
+        temperatureTolerance: 2,
+        idealHumidity: 60,
+        humidityTolerance: 10,
+        notifySoilMoisture: false,
+      }),
+    );
+
+    const request = require('supertest');
+    await request(app)
+      .post('/api/measurements')
+      .set('X-Device-Key', deviceSecret)
+      .send({ device_id: device.deviceIdentifier, temperature: 25, humidity: 60, soilMoisture: 5 }); // bem abaixo do limite (25-55)
+
+    const alertsRes = await agent.get('/api/alerts');
+    expect(alertsRes.body.alerts.filter((a) => a.variable === 'soil_moisture')).toHaveLength(0);
+  });
+
+  test('uma leitura sem o sensor de solo (soilMoisture ausente) não afeta o status de solo nem cria alerta', async () => {
+    const { agent, device, deviceSecret } = await registerWithDevice();
+
+    const request = require('supertest');
+    await request(app)
+      .post('/api/measurements')
+      .set('X-Device-Key', deviceSecret)
+      .send({ device_id: device.deviceIdentifier, temperature: 25, humidity: 60 });
+
+    const alertsRes = await agent.get('/api/alerts');
+    expect(alertsRes.body.alerts.filter((a) => a.variable === 'soil_moisture')).toHaveLength(0);
   });
 });

@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import * as settingsService from '../services/settings';
 import * as devicesService from '../services/devices';
+import * as pumpsService from '../services/pumps';
 import { parseDecimal, isValidDecimal, isValidOptionalDecimal } from '../utils/number';
+import { formatRelative } from '../utils/format';
 import { useTheme } from '../context/ThemeContext';
 
 const ACCENT_OPTIONS = [
@@ -23,8 +25,15 @@ const FONT_SCALE_OPTIONS = [
   { key: 'lg', label: 'Grande' },
 ];
 
-const REQUIRED_FIELDS = ['idealTemperature', 'temperatureTolerance', 'idealHumidity', 'humidityTolerance'];
-const OPTIONAL_FIELDS = ['temperatureMin', 'temperatureMax', 'humidityMin', 'humidityMax'];
+const REQUIRED_FIELDS = [
+  'idealTemperature',
+  'temperatureTolerance',
+  'idealHumidity',
+  'humidityTolerance',
+  'idealSoilMoisture',
+  'soilMoistureTolerance',
+];
+const OPTIONAL_FIELDS = ['temperatureMin', 'temperatureMax', 'humidityMin', 'humidityMax', 'soilMoistureMin', 'soilMoistureMax'];
 
 const DEFAULT_FORM = {
   idealTemperature: '25',
@@ -37,10 +46,34 @@ const DEFAULT_FORM = {
   humidityMin: '',
   humidityMax: '',
   notifyHumidity: true,
+  idealSoilMoisture: '40',
+  soilMoistureTolerance: '15',
+  soilMoistureMin: '',
+  soilMoistureMax: '',
+  notifySoilMoisture: true,
 };
+
+const PUMP_MODE_OPTIONS = [
+  {
+    key: 'automatic',
+    label: 'Automática',
+    description: 'Liga sozinha quando o solo fica abaixo do limite pelo período configurado.',
+  },
+  {
+    key: 'notify_only',
+    label: 'Somente notificar',
+    description: 'Nunca liga sozinha — só avisa quando o solo está fora do limite.',
+  },
+  {
+    key: 'manual',
+    label: 'Manual',
+    description: 'Só liga ou desliga por comando manual, abaixo.',
+  },
+];
 
 const TABS = [
   { key: 'values', label: 'Valores' },
+  { key: 'pump', label: 'Bomba d’água' },
   { key: 'appearance', label: 'Aparência' },
 ];
 
@@ -67,6 +100,12 @@ export default function Settings() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [pump, setPump] = useState(null);
+  const [pumpForm, setPumpForm] = useState(null);
+  const [pumpError, setPumpError] = useState('');
+  const [pumpSuccess, setPumpSuccess] = useState(false);
+  const [pumpSaving, setPumpSaving] = useState(false);
+  const [pumpToggling, setPumpToggling] = useState(false);
   const {
     darkMode,
     toggleDarkMode,
@@ -107,6 +146,29 @@ export default function Settings() {
         humidityMin: toFormString(settings.humidityMin),
         humidityMax: toFormString(settings.humidityMax),
         notifyHumidity: settings.notifyHumidity,
+        idealSoilMoisture: toFormString(settings.idealSoilMoisture),
+        soilMoistureTolerance: toFormString(settings.soilMoistureTolerance),
+        soilMoistureMin: toFormString(settings.soilMoistureMin),
+        soilMoistureMax: toFormString(settings.soilMoistureMax),
+        notifySoilMoisture: settings.notifySoilMoisture,
+      });
+    });
+  }, [selectedDeviceId]);
+
+  // Bomba d'água: config (modo/limite/período) + estado atual do relé — carregada à
+  // parte de Setting porque é um recurso próprio (Pump), não um campo de configuração
+  // de limites como os demais.
+  useEffect(() => {
+    if (!selectedDeviceId) return;
+    setPump(null);
+    setPumpError('');
+    setPumpSuccess(false);
+    pumpsService.getPump(selectedDeviceId).then((p) => {
+      setPump(p);
+      setPumpForm({
+        mode: p.mode,
+        moistureThreshold: toFormString(p.moistureThreshold),
+        belowThresholdMinutes: String(p.belowThresholdMinutes),
       });
     });
   }, [selectedDeviceId]);
@@ -147,6 +209,13 @@ export default function Settings() {
             form.humidityMax,
             true,
           ),
+          soilMoisture: computeRange(
+            parseDecimal(form.idealSoilMoisture),
+            parseDecimal(form.soilMoistureTolerance),
+            form.soilMoistureMin,
+            form.soilMoistureMax,
+            true,
+          ),
         }
       : null;
 
@@ -154,8 +223,10 @@ export default function Settings() {
     ? {
         temperature: form.temperatureMin !== '' && form.temperatureMax !== '' && preview.temperature.min >= preview.temperature.max,
         humidity: form.humidityMin !== '' && form.humidityMax !== '' && preview.humidity.min >= preview.humidity.max,
+        soilMoisture:
+          form.soilMoistureMin !== '' && form.soilMoistureMax !== '' && preview.soilMoisture.min >= preview.soilMoisture.max,
       }
-    : { temperature: false, humidity: false };
+    : { temperature: false, humidity: false, soilMoisture: false };
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -166,14 +237,18 @@ export default function Settings() {
       setError('Digite valores numéricos válidos (use vírgula ou ponto para decimais).');
       return;
     }
-    if (rangeErrors.temperature || rangeErrors.humidity) {
+    if (rangeErrors.temperature || rangeErrors.humidity || rangeErrors.soilMoisture) {
       setError('A taxa mínima precisa ser menor que a máxima.');
       return;
     }
 
     setSaving(true);
     try {
-      const payload = { notifyTemperature: form.notifyTemperature, notifyHumidity: form.notifyHumidity };
+      const payload = {
+        notifyTemperature: form.notifyTemperature,
+        notifyHumidity: form.notifyHumidity,
+        notifySoilMoisture: form.notifySoilMoisture,
+      };
       for (const field of REQUIRED_FIELDS) payload[field] = parseDecimal(form[field]);
       for (const field of OPTIONAL_FIELDS) payload[field] = form[field] === '' ? null : parseDecimal(form[field]);
 
@@ -185,6 +260,60 @@ export default function Settings() {
       setError(firstDetail || err.response?.data?.error || 'Não foi possível salvar.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function updatePumpField(field) {
+    return (e) => setPumpForm((prev) => ({ ...prev, [field]: e.target.value }));
+  }
+
+  function setPumpMode(mode) {
+    setPumpForm((prev) => ({ ...prev, mode }));
+  }
+
+  async function handlePumpSubmit(e) {
+    e.preventDefault();
+    setPumpError('');
+    setPumpSuccess(false);
+
+    if (!isValidDecimal(pumpForm.moistureThreshold)) {
+      setPumpError('Digite um limite de umidade do solo válido.');
+      return;
+    }
+    const minutes = Number(pumpForm.belowThresholdMinutes);
+    if (!Number.isInteger(minutes) || minutes < 1) {
+      setPumpError('Digite um período em minutos válido (mínimo 1).');
+      return;
+    }
+
+    setPumpSaving(true);
+    try {
+      const updated = await pumpsService.updatePump(selectedDeviceId, {
+        mode: pumpForm.mode,
+        moistureThreshold: parseDecimal(pumpForm.moistureThreshold),
+        belowThresholdMinutes: minutes,
+      });
+      setPump(updated);
+      setPumpSuccess(true);
+    } catch (err) {
+      const details = err.response?.data?.details;
+      const firstDetail = details ? Object.values(details)[0]?.[0] : null;
+      setPumpError(firstDetail || err.response?.data?.error || 'Não foi possível salvar.');
+    } finally {
+      setPumpSaving(false);
+    }
+  }
+
+  async function handlePumpToggle() {
+    setPumpError('');
+    setPumpToggling(true);
+    try {
+      const updated = await pumpsService.togglePump(selectedDeviceId, !pump.isOn);
+      setPump(updated);
+    } catch (err) {
+      setPumpError(err.response?.data?.error || 'Não foi possível alterar o estado da bomba.');
+    } finally {
+      setPumpToggling(false);
     }
   }
 
@@ -249,8 +378,8 @@ export default function Settings() {
       )}
 
       {activeTab === 'values' && devices.length > 0 && form && (
-        <form onSubmit={handleSubmit} className="max-w-3xl">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <form onSubmit={handleSubmit} className="max-w-5xl">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <VariableSection
               title="Temperatura"
               accent="blue"
@@ -289,6 +418,25 @@ export default function Settings() {
               notify={form.notifyHumidity}
               onNotifyChange={updateCheckbox('notifyHumidity')}
             />
+            <VariableSection
+              title="Umidade do solo"
+              accent="amber"
+              unit="%"
+              idealLabel="Umidade do solo ideal (%)"
+              idealValue={form.idealSoilMoisture}
+              onIdealChange={update('idealSoilMoisture')}
+              toleranceLabel="Margem de tolerância (±%)"
+              toleranceValue={form.soilMoistureTolerance}
+              onToleranceChange={update('soilMoistureTolerance')}
+              minValue={form.soilMoistureMin}
+              onMinChange={update('soilMoistureMin')}
+              maxValue={form.soilMoistureMax}
+              onMaxChange={update('soilMoistureMax')}
+              range={preview?.soilMoisture}
+              rangeError={rangeErrors.soilMoisture}
+              notify={form.notifySoilMoisture}
+              onNotifyChange={updateCheckbox('notifySoilMoisture')}
+            />
           </div>
 
           {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
@@ -311,6 +459,34 @@ export default function Settings() {
             </button>
           </div>
         </form>
+      )}
+
+      {activeTab === 'pump' && devices.length === 0 && (
+        <div className="max-w-3xl rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center dark:border-slate-600 dark:bg-slate-800">
+          <p className="text-slate-600 dark:text-slate-300">Nenhum dispositivo cadastrado ainda.</p>
+          <Link to="/devices" className="mt-3 inline-block rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+            Cadastrar dispositivo
+          </Link>
+        </div>
+      )}
+
+      {activeTab === 'pump' && devices.length > 0 && (!pump || !pumpForm) && (
+        <p className="text-slate-500 dark:text-slate-400">Carregando…</p>
+      )}
+
+      {activeTab === 'pump' && devices.length > 0 && pump && pumpForm && (
+        <PumpPanel
+          pump={pump}
+          form={pumpForm}
+          onFieldChange={updatePumpField}
+          onModeChange={setPumpMode}
+          onSubmit={handlePumpSubmit}
+          saving={pumpSaving}
+          error={pumpError}
+          success={pumpSuccess}
+          onToggle={handlePumpToggle}
+          toggling={pumpToggling}
+        />
       )}
 
       {activeTab === 'appearance' && (
@@ -408,9 +584,110 @@ export default function Settings() {
   );
 }
 
+// Painel de configuração + controle da bomba d'água ligada ao sensor de umidade do
+// solo do dispositivo selecionado. Duas ações independentes: salvar a config (modo,
+// limite, período) e ligar/desligar manualmente — a segunda funciona em qualquer modo
+// (ver pumps.service.js no backend), então o botão nunca fica desabilitado por modo.
+function PumpPanel({ pump, form, onFieldChange, onModeChange, onSubmit, saving, error, success, onToggle, toggling }) {
+  return (
+    <div className="max-w-2xl space-y-4">
+      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200">Estado atual</h2>
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              pump.isOn
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+            }`}
+          >
+            {pump.isOn ? 'Ligada' : 'Desligada'}
+          </span>
+        </div>
+        <p className="text-xs text-slate-400 dark:text-slate-500">
+          {pump.isOn && pump.turnedOnAt
+            ? `Ligada ${formatRelative(pump.turnedOnAt)}.`
+            : 'A bomba não está ligada no momento.'}
+        </p>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={toggling}
+          className={`mt-4 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${
+            pump.isOn ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'
+          }`}
+        >
+          {toggling ? 'Aguarde…' : pump.isOn ? 'Desligar agora' : 'Ligar agora'}
+        </button>
+      </div>
+
+      <form onSubmit={onSubmit} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <h2 className="mb-4 text-sm font-semibold text-slate-700 dark:text-slate-200">Modo de operação</h2>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {PUMP_MODE_OPTIONS.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => onModeChange(option.key)}
+              className={`rounded-lg border p-3 text-left text-sm transition-colors ${
+                form.mode === option.key
+                  ? 'border-brand-500 bg-brand-50 dark:border-brand-500 dark:bg-brand-500/10'
+                  : 'border-slate-300 bg-white hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-900 dark:hover:bg-slate-800'
+              }`}
+            >
+              <p className="font-medium text-slate-700 dark:text-slate-200">{option.label}</p>
+              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">{option.description}</p>
+            </button>
+          ))}
+        </div>
+
+        <p className="mb-2 mt-5 text-xs font-semibold uppercase tracking-wide text-slate-400 dark:text-slate-500">
+          Limite e período
+        </p>
+        <p className="mb-3 text-xs text-slate-400 dark:text-slate-500">
+          {form.mode === 'automatic'
+            ? 'Quando o solo ficar abaixo do limite por esse período seguido, a bomba liga sozinha.'
+            : 'Usado só para acompanhar há quanto tempo o solo está seco — não liga a bomba sozinha nesse modo.'}
+        </p>
+        <div className="grid grid-cols-2 gap-4">
+          <DecimalField
+            label="Limite de umidade do solo (%)"
+            value={form.moistureThreshold}
+            onChange={onFieldChange('moistureThreshold')}
+          />
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-200">
+            Período abaixo do limite (minutos)
+            <input
+              type="number"
+              min="1"
+              step="1"
+              value={form.belowThresholdMinutes}
+              onChange={onFieldChange('belowThresholdMinutes')}
+              required
+              className="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+            />
+          </label>
+        </div>
+
+        {error && <p className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {success && <p className="mt-4 text-sm text-emerald-600 dark:text-emerald-400">Configuração da bomba salva com sucesso.</p>}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="mt-4 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+        >
+          {saving ? 'Salvando…' : 'Salvar configuração da bomba'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
 const ACCENT_BORDER = {
   blue: 'border-l-blue-400 dark:border-l-blue-500',
   teal: 'border-l-teal-400 dark:border-l-teal-500',
+  amber: 'border-l-amber-400 dark:border-l-amber-500',
 };
 
 function VariableSection({

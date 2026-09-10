@@ -117,6 +117,12 @@ void sendMeasurement(const SensorReading &reading) {
   doc["device_id"] = DEVICE_ID;
   doc["temperature"] = reading.temperature;
   doc["humidity"] = reading.humidity;
+  // Só envia o campo quando o dispositivo tem o sensor de solo habilitado — omitir a
+  // chave (em vez de mandar 0 ou null) é o que faz o backend tratar como "sem sensor"
+  // nesta leitura, sem confundir com uma leitura real de solo seco.
+  if (reading.hasSoilMoisture) {
+    doc["soilMoisture"] = reading.soilMoisture;
+  }
 
   String timestamp = currentIsoTimestamp();
   if (timestamp.length() > 0) {

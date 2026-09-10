@@ -13,8 +13,14 @@
 
 struct SensorReading {
   float temperature; // graus Celsius
-  float humidity;    // % de umidade relativa
-  bool valid;         // false se a leitura falhou ou veio fora da faixa fisicamente plausível
+  float humidity;    // % de umidade relativa (do ar)
+  bool valid;         // false se a leitura do DHT falhou ou veio fora da faixa fisicamente plausível
+
+  // Sensor de umidade do solo é opcional (SOIL_MOISTURE_ENABLED em config.h) e
+  // independente do DHT — um dispositivo sem esse sensor simplesmente não envia o
+  // campo, em vez de travar/invalidar a leitura inteira por causa dele.
+  float soilMoisture;   // % de umidade do solo (0-100), só significativo se hasSoilMoisture
+  bool hasSoilMoisture; // false se o sensor de solo estiver desabilitado ou a leitura falhar
 };
 
 void sensorSetup();

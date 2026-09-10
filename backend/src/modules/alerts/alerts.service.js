@@ -1,7 +1,11 @@
 const prisma = require('../../lib/prisma');
 const AppError = require('../../lib/AppError');
 
-const VARIABLES = ['temperature', 'humidity'];
+const VARIABLES = ['temperature', 'humidity', 'soilMoisture'];
+// O enum do banco (AlertVariable) usa snake_case; o resto do código JS usa camelCase
+// para casar com os nomes de Measurement/Setting (soilMoisture) — este mapa só existe
+// nessa borda, ao gravar/consultar o campo `variable` do Alert.
+const DB_VARIABLE = { temperature: 'temperature', humidity: 'humidity', soilMoisture: 'soil_moisture' };
 
 // Avalia uma medição recém-gravada contra os limites atuais do usuário e mantém
 // o ciclo de vida dos alertas como EVENTOS (não uma linha por leitura), evitando
@@ -11,19 +15,30 @@ const VARIABLES = ['temperature', 'humidity'];
 //   - fora da faixa e sem alerta ativo para device+variável -> abre um novo alerta;
 //   - fora da faixa e já existe alerta ativo -> apenas atualiza o valor de pico;
 //   - dentro da faixa e existe alerta ativo -> encerra o alerta (ended_at = agora).
-// `notifyFlags` (Setting.notifyTemperature/notifyHumidity) desliga a geração de
-// alertas por variável — quem não se importa com umidade, por exemplo, pode desligar
-// só aquela. Um alerta que já estava ativo antes de desligar ainda é encerrado
-// normalmente quando a leitura volta ao normal (não fica "preso" aberto para sempre);
-// só a ABERTURA de novos alertas para a variável desligada é que é pulada.
-async function evaluateMeasurement(measurement, device, thresholds, notifyFlags = { temperature: true, humidity: true }) {
+// `notifyFlags` (Setting.notifyTemperature/notifyHumidity/notifySoilMoisture) desliga
+// a geração de alertas por variável — quem não se importa com umidade, por exemplo,
+// pode desligar só aquela. Um alerta que já estava ativo antes de desligar ainda é
+// encerrado normalmente quando a leitura volta ao normal (não fica "preso" aberto para
+// sempre); só a ABERTURA de novos alertas para a variável desligada é que é pulada.
+async function evaluateMeasurement(
+  measurement,
+  device,
+  thresholds,
+  notifyFlags = { temperature: true, humidity: true, soilMoisture: true },
+) {
   for (const variable of VARIABLES) {
+    // soilMoisture é opcional na medição (nem todo dispositivo tem o sensor) — sem o
+    // valor, não há o que avaliar, e um alerta já aberto simplesmente permanece como
+    // estava até uma leitura futura que traga o sensor de novo.
+    if (measurement[variable] == null) continue;
+
     const value = Number(measurement[variable]);
     const { min, max } = thresholds[variable];
     const isOutOfRange = value < min || value > max;
+    const dbVariable = DB_VARIABLE[variable];
 
     const activeAlert = await prisma.alert.findFirst({
-      where: { deviceId: device.id, variable, status: 'active' },
+      where: { deviceId: device.id, variable: dbVariable, status: 'active' },
     });
 
     if (isOutOfRange) {
@@ -38,7 +53,7 @@ async function evaluateMeasurement(measurement, device, thresholds, notifyFlags 
           data: {
             userId: device.userId,
             deviceId: device.id,
-            variable,
+            variable: dbVariable,
             direction,
             triggeringMeasurementId: measurement.id,
             peakValue: value,

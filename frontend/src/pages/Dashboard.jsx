@@ -4,13 +4,14 @@ import * as measurementsService from '../services/measurements';
 import * as historyService from '../services/history';
 import * as settingsService from '../services/settings';
 import * as alertsService from '../services/alerts';
+import * as pumpsService from '../services/pumps';
 import Layout from '../components/Layout';
 import MetricCard from '../components/MetricCard';
 import LineChart from '../components/LineChart';
 import AlertsBanner from '../components/AlertsBanner';
 import NotificationBadge from '../components/NotificationBadge';
 import { PERIOD_OPTIONS, computeRange } from '../utils/periods';
-import { formatDateTime, formatNumber, formatTime } from '../utils/format';
+import { formatDateTime, formatNumber, formatRelative, formatTime } from '../utils/format';
 import { getDeviceStatus } from '../utils/deviceStatus';
 
 const POLL_INTERVAL_MS = 10_000;
@@ -42,18 +43,23 @@ function pushOutOfRange(limitMin, limitMax, minSpan, maxSpan, physicalMin, physi
 function buildSimulatedReading(thresholds) {
   let temperature = randomInRange(thresholds.temperature.min, thresholds.temperature.max);
   let humidity = randomInRange(thresholds.humidity.min, thresholds.humidity.max);
+  let soilMoisture = randomInRange(thresholds.soilMoisture.min, thresholds.soilMoisture.max);
 
   if (Math.random() < OUT_OF_RANGE_PROBABILITY) {
-    if (Math.random() < 0.5) {
+    const roll = Math.random();
+    if (roll < 1 / 3) {
       temperature = pushOutOfRange(thresholds.temperature.min, thresholds.temperature.max, 1, 3, 0, 60);
-    } else {
+    } else if (roll < 2 / 3) {
       humidity = pushOutOfRange(thresholds.humidity.min, thresholds.humidity.max, 3, 8, 0, 100);
+    } else {
+      soilMoisture = pushOutOfRange(thresholds.soilMoisture.min, thresholds.soilMoisture.max, 3, 8, 0, 100);
     }
   }
 
   return {
     temperature: Number(temperature.toFixed(1)),
     humidity: Number(humidity.toFixed(1)),
+    soilMoisture: Number(soilMoisture.toFixed(1)),
   };
 }
 
@@ -61,10 +67,12 @@ export default function Dashboard() {
   const [latest, setLatest] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('6h');
-  const [chartData, setChartData] = useState({ labels: [], temperature: [], humidity: [] });
+  const [chartData, setChartData] = useState({ labels: [], temperature: [], humidity: [], soilMoisture: [] });
   const [alertsRefreshKey, setAlertsRefreshKey] = useState(0);
   const [selectedDeviceId, setSelectedDeviceId] = useState(null);
   const [deviceAlertCounts, setDeviceAlertCounts] = useState({});
+  const [pump, setPump] = useState(null);
+  const [pumpToggling, setPumpToggling] = useState(false);
   const simulatingRef = useRef(false);
   const latestRef = useRef([]);
 
@@ -113,8 +121,18 @@ export default function Dashboard() {
       labels: ascending.map((item) => formatTime(item.measuredAt)),
       temperature: ascending.map((item) => Number(item.temperature)),
       humidity: ascending.map((item) => Number(item.humidity)),
+      soilMoisture: ascending.map((item) => (item.soilMoisture != null ? Number(item.soilMoisture) : null)),
     });
   }, [primary?.device?.id, period]);
+
+  // Estado da bomba do dispositivo selecionado — muda sozinho no backend (modo
+  // automatic) a cada leitura, então precisa ser recarregado no mesmo ritmo do
+  // gráfico/última leitura para o botão manual não ficar mostrando um estado velho.
+  const loadPump = useCallback(async () => {
+    if (!primary?.device?.id) return;
+    const data = await pumpsService.getPump(primary.device.id);
+    setPump(data);
+  }, [primary?.device?.id]);
 
   useEffect(() => {
     loadLatest();
@@ -127,6 +145,12 @@ export default function Dashboard() {
     const interval = setInterval(loadChart, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [loadChart]);
+
+  useEffect(() => {
+    loadPump();
+    const interval = setInterval(loadPump, POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [loadPump]);
 
   const deviceStatus = useMemo(
     () => (primary?.device ? getDeviceStatus(primary.device.lastSeenAt) : null),
@@ -163,7 +187,7 @@ export default function Dashboard() {
             return measurementsService.simulateMeasurement({ deviceId: item.device.id, ...reading });
           }),
         );
-        await Promise.all([loadLatest(), loadChart()]);
+        await Promise.all([loadLatest(), loadChart(), loadPump()]);
         setAlertsRefreshKey((k) => k + 1);
       } finally {
         simulatingRef.current = false;
@@ -171,7 +195,18 @@ export default function Dashboard() {
     }, AUTO_SIM_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [loadLatest, loadChart]);
+  }, [loadLatest, loadChart, loadPump]);
+
+  async function handlePumpToggle() {
+    if (!pump) return;
+    setPumpToggling(true);
+    try {
+      const updated = await pumpsService.togglePump(pump.deviceId, !pump.isOn);
+      setPump(updated);
+    } finally {
+      setPumpToggling(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -234,7 +269,7 @@ export default function Dashboard() {
 
       <AlertsBanner refreshKey={alertsRefreshKey} />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <MetricCard
           label="Temperatura"
           value={measurement ? formatNumber(measurement.temperature) : '—'}
@@ -248,6 +283,12 @@ export default function Dashboard() {
           status={measurement?.humidityStatus}
         />
         <MetricCard
+          label="Umidade do solo"
+          value={measurement?.soilMoisture != null ? formatNumber(measurement.soilMoisture) : '—'}
+          unit={measurement?.soilMoisture != null ? '%' : undefined}
+          status={measurement?.soilMoistureStatus}
+        />
+        <MetricCard
           label="Status do dispositivo"
           value={`${deviceStatus.dot} ${deviceStatus.label}`}
           subtitle={`Última comunicação: ${formatDateTime(device.lastSeenAt)}`}
@@ -257,6 +298,8 @@ export default function Dashboard() {
           value={measurement ? formatDateTime(measurement.measuredAt) : '—'}
         />
       </div>
+
+      {pump && <PumpWidget pump={pump} onToggle={handlePumpToggle} toggling={pumpToggling} />}
 
       <div className="mt-6 flex flex-wrap gap-2">
         {PERIOD_OPTIONS.filter((p) => p.key !== 'custom').map((option) => (
@@ -275,7 +318,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Temperatura (°C)</h2>
           {chartData.labels.length === 0 ? (
@@ -292,8 +335,57 @@ export default function Dashboard() {
             <LineChart labels={chartData.labels} data={chartData.humidity} label="Umidade" color="#0d9488" unit="%" />
           )}
         </div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+          <h2 className="mb-3 text-sm font-semibold text-slate-700 dark:text-slate-200">Umidade do solo (%)</h2>
+          {chartData.labels.length === 0 || chartData.soilMoisture.every((v) => v == null) ? (
+            <p className="text-sm text-slate-400 dark:text-slate-500">Sem dados no período selecionado.</p>
+          ) : (
+            <LineChart labels={chartData.labels} data={chartData.soilMoisture} label="Umidade do solo" color="#d97706" unit="%" />
+          )}
+        </div>
       </div>
     </Layout>
+  );
+}
+
+const PUMP_MODE_LABEL = {
+  automatic: 'Automática',
+  notify_only: 'Somente notificar',
+  manual: 'Manual',
+};
+
+// Faixa compacta com o estado atual da bomba do dispositivo selecionado e um botão de
+// controle manual — funciona em qualquer modo (a configuração completa fica em
+// Configurações > Bomba d'água, aqui é só o essencial para acompanhar/agir rápido).
+function PumpWidget({ pump, onToggle, toggling }) {
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+      <div className="flex items-center gap-3">
+        <span
+          className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            pump.isOn
+              ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400'
+              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'
+          }`}
+        >
+          Bomba {pump.isOn ? 'ligada' : 'desligada'}
+        </span>
+        <span className="text-xs text-slate-400 dark:text-slate-500">
+          Modo: {PUMP_MODE_LABEL[pump.mode]}
+          {pump.isOn && pump.turnedOnAt ? ` · ligada ${formatRelative(pump.turnedOnAt)}` : ''}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={toggling}
+        className={`rounded-lg px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60 ${
+          pump.isOn ? 'bg-red-600 hover:bg-red-700' : 'bg-brand-600 hover:bg-brand-700'
+        }`}
+      >
+        {toggling ? 'Aguarde…' : pump.isOn ? 'Desligar agora' : 'Ligar agora'}
+      </button>
+    </div>
   );
 }
 

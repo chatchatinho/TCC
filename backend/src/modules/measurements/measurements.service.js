@@ -1,6 +1,7 @@
 const prisma = require('../../lib/prisma');
 const settingsService = require('../settings/settings.service');
 const alertsService = require('../alerts/alerts.service');
+const pumpsService = require('../pumps/pumps.service');
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000; // 5 minutos de tolerância para relógio do ESP32
 const MAX_AGE_MS = 365 * 24 * 60 * 60 * 1000; // 1 ano
@@ -24,11 +25,11 @@ function resolveMeasuredAt(timestamp) {
 // `source` distingue leituras vindas de um ESP32 físico ('real') das leituras geradas
 // pela simulação automática do dashboard ('simulated') — só a primeira atualiza
 // `lastRealMeasurementAt`, o sinal que o frontend usa para desligar a simulação.
-async function create(device, { temperature, humidity, timestamp }, { source = 'simulated' } = {}) {
+async function create(device, { temperature, humidity, soilMoisture, timestamp }, { source = 'simulated' } = {}) {
   const measuredAt = resolveMeasuredAt(timestamp);
 
   const measurement = await prisma.measurement.create({
-    data: { deviceId: device.id, temperature, humidity, measuredAt },
+    data: { deviceId: device.id, temperature, humidity, soilMoisture: soilMoisture ?? null, measuredAt },
   });
 
   const now = new Date();
@@ -39,8 +40,18 @@ async function create(device, { temperature, humidity, timestamp }, { source = '
 
   const settings = await settingsService.getOrCreate(device.id);
   const thresholds = settingsService.computeThresholds(settings);
-  const notifyFlags = { temperature: settings.notifyTemperature, humidity: settings.notifyHumidity };
+  const notifyFlags = {
+    temperature: settings.notifyTemperature,
+    humidity: settings.notifyHumidity,
+    soilMoisture: settings.notifySoilMoisture,
+  };
   await alertsService.evaluateMeasurement(measurement, device, thresholds, notifyFlags);
+
+  // A bomba só reage a leituras que realmente trazem o sensor de solo — um
+  // dispositivo sem esse sensor nunca aciona nem "conta tempo" para a irrigação.
+  if (measurement.soilMoisture != null) {
+    await pumpsService.evaluateMeasurement(device, measurement);
+  }
 
   return measurement;
 }

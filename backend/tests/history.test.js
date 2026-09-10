@@ -127,7 +127,9 @@ describe('GET /api/history/export', () => {
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/text\/csv/);
     const lines = res.text.trim().split('\n');
-    expect(lines[0]).toBe('data,horario,temperatura_c,umidade_pct,status_temperatura,status_umidade');
+    expect(lines[0]).toBe(
+      'data,horario,temperatura_c,umidade_pct,umidade_solo_pct,status_temperatura,status_umidade,status_umidade_solo',
+    );
     expect(lines).toHaveLength(6); // cabeçalho + 5 medições
   });
 });

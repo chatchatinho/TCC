@@ -41,13 +41,27 @@ function computeThresholds(settings) {
         ? Number(settings.humidityMax)
         : Math.min(100, Number(settings.idealHumidity) + Number(settings.humidityTolerance)),
   };
-  return { temperature, humidity };
+  const soilMoisture = {
+    min:
+      settings.soilMoistureMin != null
+        ? Number(settings.soilMoistureMin)
+        : Math.max(0, Number(settings.idealSoilMoisture) - Number(settings.soilMoistureTolerance)),
+    max:
+      settings.soilMoistureMax != null
+        ? Number(settings.soilMoistureMax)
+        : Math.min(100, Number(settings.idealSoilMoisture) + Number(settings.soilMoistureTolerance)),
+  };
+  return { temperature, humidity, soilMoisture };
 }
 
 // Status por variável para exibição no dashboard/histórico: 'normal' ou 'out_of_range'.
+// soilMoistureStatus vem null quando a leitura não trouxe o valor (dispositivo sem
+// sensor de solo) — diferente de temperatura/umidade do ar, que todo dispositivo envia.
 function evaluateReadingStatus(measurement, thresholds) {
   const temperature = Number(measurement.temperature);
   const humidity = Number(measurement.humidity);
+  const hasSoilMoisture = measurement.soilMoisture != null;
+  const soilMoisture = hasSoilMoisture ? Number(measurement.soilMoisture) : null;
   return {
     temperatureStatus:
       temperature < thresholds.temperature.min || temperature > thresholds.temperature.max
@@ -55,6 +69,11 @@ function evaluateReadingStatus(measurement, thresholds) {
         : 'normal',
     humidityStatus:
       humidity < thresholds.humidity.min || humidity > thresholds.humidity.max
+        ? 'out_of_range'
+        : 'normal',
+    soilMoistureStatus: !hasSoilMoisture
+      ? null
+      : soilMoisture < thresholds.soilMoisture.min || soilMoisture > thresholds.soilMoisture.max
         ? 'out_of_range'
         : 'normal',
   };

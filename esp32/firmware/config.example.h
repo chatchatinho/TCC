@@ -24,3 +24,19 @@
 // de ~1s de intervalo; 5s dá uma margem de segurança confortável mantendo o dashboard
 // bem responsivo. Aumente esse valor se quiser economizar tráfego de rede.
 #define READING_INTERVAL_MS 5000
+
+// Sensor de umidade do solo (higrômetro capacitivo, saída analógica) é opcional — só
+// existe em dispositivos que também controlam uma bomba d'água para irrigação. Deixe
+// "false" se este dispositivo não tiver o sensor instalado; nesse caso, a leitura de
+// solo simplesmente não é enviada, e o sistema trata esse dispositivo como "sem
+// irrigação automática" (a tela de Configurações/Bomba d'água ainda funciona, só que
+// sem dados reais de umidade do solo para acompanhar).
+#define SOIL_MOISTURE_ENABLED false
+// Pino ADC do ESP32 ligado à saída analógica do sensor de solo (ajuste conforme a
+// fiação; qualquer pino ADC1 do ESP32 funciona, ex.: 32, 33, 34, 35, 36, 39).
+#define SOIL_MOISTURE_PIN 34
+// Calibração seco/molhado do sensor (ver src/Sensor.cpp): leia SOIL_MOISTURE_PIN com o
+// sensor ao ar (seco) e depois mergulhado em água (molhado), e ajuste os dois valores
+// abaixo com o que foi lido em cada caso — variam por sensor e por fiação.
+#define SOIL_MOISTURE_DRY_RAW 3000
+#define SOIL_MOISTURE_WET_RAW 1200

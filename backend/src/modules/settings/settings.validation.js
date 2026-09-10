@@ -22,8 +22,17 @@ const updateSettingsSchema = z
     humidityMax: optionalRate.refine((v) => v == null || (v >= 0 && v <= 100), {
       message: 'Taxa máxima de umidade deve estar entre 0 e 100%.',
     }),
+    idealSoilMoisture: z.number().min(0, 'Umidade do solo ideal deve estar entre 0 e 100%.').max(100),
+    soilMoistureTolerance: z.number().min(0.1, 'A margem deve ser maior que zero.').max(100),
+    soilMoistureMin: optionalRate.refine((v) => v == null || (v >= 0 && v <= 100), {
+      message: 'Taxa mínima de umidade do solo deve estar entre 0 e 100%.',
+    }),
+    soilMoistureMax: optionalRate.refine((v) => v == null || (v >= 0 && v <= 100), {
+      message: 'Taxa máxima de umidade do solo deve estar entre 0 e 100%.',
+    }),
     notifyTemperature: z.boolean(),
     notifyHumidity: z.boolean(),
+    notifySoilMoisture: z.boolean(),
   })
   .refine((data) => data.temperatureMin == null || data.temperatureMax == null || data.temperatureMin < data.temperatureMax, {
     message: 'A taxa mínima de temperatura deve ser menor que a máxima.',
@@ -32,6 +41,10 @@ const updateSettingsSchema = z
   .refine((data) => data.humidityMin == null || data.humidityMax == null || data.humidityMin < data.humidityMax, {
     message: 'A taxa mínima de umidade deve ser menor que a máxima.',
     path: ['humidityMax'],
+  })
+  .refine((data) => data.soilMoistureMin == null || data.soilMoistureMax == null || data.soilMoistureMin < data.soilMoistureMax, {
+    message: 'A taxa mínima de umidade do solo deve ser menor que a máxima.',
+    path: ['soilMoistureMax'],
   });
 
 module.exports = { updateSettingsSchema };

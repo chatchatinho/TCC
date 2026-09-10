@@ -59,6 +59,7 @@ model Device {
   measurements Measurement[]
   alerts       Alert[]
   settings     Setting?
+  pump         Pump?
 
   @@index([userId])
   @@map("devices")
@@ -69,6 +70,10 @@ model Measurement {
   deviceId    String   @map("device_id")
   temperature Decimal  @db.Decimal(5, 2)
   humidity    Decimal  @db.Decimal(5, 2)
+  // Sensor de umidade do solo é opcional — nem todo dispositivo tem um instalado (ex.:
+  // um sensor só de ambiente, sem irrigação associada) — por isso fica nullable, ao
+  // contrário de temperature/humidity (do ar), que todo dispositivo sempre envia.
+  soilMoisture Decimal? @map("soil_moisture") @db.Decimal(5, 2)
   measuredAt  DateTime @map("measured_at") @db.Timestamptz(3)
   receivedAt  DateTime @default(now()) @map("received_at") @db.Timestamptz(3)
 
@@ -102,6 +107,15 @@ model Setting {
   // usuário pode não se importar com umidade, por exemplo) — os cards de status no
   // dashboard/histórico continuam mostrando normal/fora do limite normalmente, só o
   // motor de alertas (evaluateMeasurement) para de abrir eventos para a variável.
+  // Umidade do solo (sensor separado do DHT11, usado pela irrigação automática — ver
+  // model Pump). Mesmo padrão de ideal/tolerância/mín-máx/notificação das outras duas
+  // variáveis, mas independente delas: uma leitura sem sensor de solo (soilMoisture
+  // nulo) simplesmente não é avaliada contra esses limites.
+  idealSoilMoisture     Decimal  @default(40) @map("ideal_soil_moisture") @db.Decimal(5, 2)
+  soilMoistureTolerance Decimal  @default(15) @map("soil_moisture_tolerance") @db.Decimal(5, 2)
+  soilMoistureMin       Decimal? @map("soil_moisture_min") @db.Decimal(5, 2)
+  soilMoistureMax       Decimal? @map("soil_moisture_max") @db.Decimal(5, 2)
+  notifySoilMoisture    Boolean  @default(true) @map("notify_soil_moisture")
   notifyTemperature    Boolean  @default(true) @map("notify_temperature")
   notifyHumidity       Boolean  @default(true) @map("notify_humidity")
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
@@ -114,6 +128,7 @@ model Setting {
 enum AlertVariable {
   temperature
   humidity
+  soil_moisture
 }
 
 enum AlertDirection {
@@ -151,4 +166,42 @@ model Alert {
   @@index([userId, status])
   @@index([deviceId, status])
   @@map("alerts")
+}
+
+// automatic: liga o relé sozinha quando a umidade do solo fica abaixo de
+// moistureThreshold por belowThresholdMinutes seguidos.
+// notify_only: nunca liga sozinha — só o motor de alertas (Setting.notifySoilMoisture)
+// notifica o valor fora do limite; o acionamento continua possível manualmente.
+// manual: o estado da bomba só muda por comando explícito do usuário.
+enum PumpMode {
+  automatic
+  notify_only
+  manual
+}
+
+// Bomba d'água interligada ao sensor de umidade do solo do dispositivo (1:1, mesmo
+// padrão do Setting — cada dispositivo tem sua própria bomba/regra de irrigação).
+model Pump {
+  id       String   @id @default(uuid())
+  deviceId String   @unique @map("device_id")
+  mode     PumpMode @default(notify_only)
+  // Umidade do solo (%) abaixo da qual o dispositivo é considerado "seco" — mesmo
+  // valor usado tanto para decidir ligar a bomba (modo automatic) quanto só para
+  // contar o tempo decorrido nos outros modos (exibido na tela, sem acionar o relé).
+  moistureThreshold     Decimal   @default(30) @map("moisture_threshold") @db.Decimal(5, 2)
+  belowThresholdMinutes Int       @default(30) @map("below_threshold_minutes")
+  // Estado atual do relé — refletido pelo motor de avaliação (evaluateMeasurement) em
+  // modo automatic, ou diretamente pelo endpoint de controle manual nos outros modos.
+  isOn       Boolean   @default(false) @map("is_on")
+  turnedOnAt DateTime? @map("turned_on_at") @db.Timestamptz(3)
+  // Desde quando a leitura mais recente está continuamente abaixo do limite — nulo
+  // quando a última leitura estava normal. Zerado assim que uma leitura volta a ficar
+  // dentro do limite (o "período estipulado" é sempre contado a partir da streak atual,
+  // nunca acumulado entre janelas separadas de seca).
+  belowThresholdSince DateTime? @map("below_threshold_since") @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@map("pumps")
 }
