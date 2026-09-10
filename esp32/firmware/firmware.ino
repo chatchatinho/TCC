@@ -1,10 +1,18 @@
-// Firmware do ESP32 — envia leituras de temperatura/umidade (DHT11) para a API do
-// sistema de monitoramento. Ver ../README.md para fiação, bibliotecas e como configurar.
+// Firmware do ESP32 — envia leituras de temperatura/umidade (DHT11) e umidade do solo
+// para a API do sistema de monitoramento, e aciona o relé da bomba d'água conforme o
+// estado devolvido pelo servidor a cada leitura. Ver ../README.md para fiação,
+// bibliotecas e como configurar.
 //
 // Fluxo (seção 16 do escopo do TCC): conecta ao Wi-Fi -> sincroniza hora via NTP ->
-// a cada READING_INTERVAL_MS: lê o sensor -> valida -> monta JSON -> envia via
-// HTTP(S) autenticado -> trata a resposta -> se o Wi-Fi cair, reconecta antes da
-// próxima tentativa.
+// a cada READING_INTERVAL_MS: lê os sensores -> valida -> monta JSON -> envia via
+// HTTP(S) autenticado -> lê o campo "pump.isOn" da resposta e aciona o relé -> se o
+// Wi-Fi cair, reconecta antes da próxima tentativa.
+//
+// Quem decide ligar/desligar a bomba é sempre o BACKEND (modo automático por tempo
+// seco, notificação apenas, ou comando manual pelo app) — este firmware só espelha no
+// relé o último estado que o servidor mandou. Isso evita duplicar a lógica de
+// automação em dois lugares e faz o botão manual do app funcionar já na próxima
+// leitura enviada.
 
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -13,6 +21,7 @@
 #include <time.h>
 
 #include "src/Sensor.h"
+#include "src/Pump.h"
 
 #if __has_include("config.h")
 #include "config.h"
@@ -109,9 +118,29 @@ String currentIsoTimestamp() {
   return String(buffer);
 }
 
+// Lê o campo "pump.isOn" da resposta do servidor e replica no relé. Se a resposta não
+// vier num formato reconhecível (ex.: servidor mais antigo, sem esse campo), a bomba
+// simplesmente mantém o último estado conhecido — nunca liga/desliga "no escuro".
+void applyPumpStateFromResponse(const String &response) {
+  JsonDocument doc;
+  DeserializationError err = deserializeJson(doc, response);
+  if (err) {
+    Serial.printf("Não foi possível interpretar a resposta da API (bomba mantém o último estado): %s\n", err.c_str());
+    return;
+  }
+
+  JsonVariant pumpIsOn = doc["pump"]["isOn"];
+  if (pumpIsOn.isNull()) return;
+
+  bool isOn = pumpIsOn.as<bool>();
+  pumpSetState(isOn);
+  Serial.printf("Bomba: %s\n", isOn ? "LIGADA" : "desligada");
+}
+
 // Monta e envia o JSON da leitura para POST /api/measurements, autenticado por
 // device_id (no corpo) + token no header X-Device-Key (seção 17 do escopo — o
-// device_id sozinho nunca é suficiente).
+// device_id sozinho nunca é suficiente). A resposta de sucesso (201) inclui o estado
+// atual da bomba, aplicado ao relé em seguida.
 void sendMeasurement(const SensorReading &reading) {
   JsonDocument doc;
   doc["device_id"] = DEVICE_ID;
@@ -162,6 +191,7 @@ void sendMeasurement(const SensorReading &reading) {
     String response = http.getString();
     if (statusCode == 201) {
       Serial.printf("Leitura registrada com sucesso (%d): %s\n", statusCode, response.c_str());
+      applyPumpStateFromResponse(response);
     } else {
       // 400 (dados inválidos), 401 (token/dispositivo não autorizado) e 429 (rate
       // limit) chegam aqui — registrados, mas não travam o firmware (seção 25).
@@ -179,6 +209,7 @@ void setup() {
   delay(500);
 
   sensorSetup();
+  pumpSetup();
 
   if (connectWifi()) {
     syncTime();

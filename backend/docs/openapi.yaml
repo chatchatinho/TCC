@@ -262,7 +262,24 @@ paths:
                   description: Opcional — só enviado por dispositivos com sensor de umidade do solo.
                 timestamp: { type: string, format: date-time }
       responses:
-        "201": { description: Medição registrada }
+        "201":
+          description: >
+            Medição registrada. O campo pump.isOn traz o estado atual da bomba do
+            dispositivo (ligada automaticamente, manualmente pelo app, ou ainda
+            desligada) — o firmware do ESP32 usa esse valor para acionar o relé a
+            cada leitura enviada, sem precisar de autenticação de usuário separada.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  measured_at: { type: string, format: date-time }
+                  received_at: { type: string, format: date-time }
+                  pump:
+                    type: object
+                    properties:
+                      isOn: { type: boolean }
         "401": { description: Dispositivo não autorizado }
   /measurements/latest:
     get:

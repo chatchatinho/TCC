@@ -40,3 +40,13 @@
 // abaixo com o que foi lido em cada caso — variam por sensor e por fiação.
 #define SOIL_MOISTURE_DRY_RAW 3000
 #define SOIL_MOISTURE_WET_RAW 1200
+
+// Bomba d'água (relé) é opcional — só existe em dispositivos com irrigação
+// automática. O pino abaixo controla o relé; quem decide ligar/desligar continua
+// sendo o backend (modo automático/notificar/manual em Configurações > Bomba
+// d'água), o firmware só espelha esse estado no relé a cada leitura enviada.
+#define RELAY_PIN 26
+// A maioria dos módulos relé de baixo custo aciona em nível baixo (LOW = ligado,
+// HIGH = desligado) — mantenha "true" para começar. Se na prática a bomba ligar
+// quando deveria desligar (e vice-versa), troque para "false".
+#define RELAY_ACTIVE_LOW true

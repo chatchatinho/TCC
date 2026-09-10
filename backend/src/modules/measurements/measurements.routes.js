@@ -2,6 +2,7 @@ const { Router } = require('express');
 const measurementsService = require('./measurements.service');
 const settingsService = require('../settings/settings.service');
 const devicesService = require('../devices/devices.service');
+const pumpsService = require('../pumps/pumps.service');
 const { createMeasurementSchema, simulateMeasurementSchema } = require('./measurements.validation');
 const { requireAuth } = require('../../middlewares/auth');
 const { requireDeviceAuth } = require('../../middlewares/deviceAuth');
@@ -20,10 +21,16 @@ router.post(
   async (req, res, next) => {
     try {
       const measurement = await measurementsService.create(req.device, req.body, { source: 'real' });
+      // A bomba pode ter mudado de estado (automaticamente, no modo automatic, ou
+      // manualmente pelo app) desde a última leitura deste dispositivo. Devolver o
+      // estado atual aqui deixa o próprio ESP32 acionar o relé, sem precisar de uma
+      // autenticação de usuário separada — ele já está autenticado por X-Device-Key.
+      const pump = await pumpsService.getOrCreate(req.device.id);
       res.status(201).json({
         id: measurement.id,
         measured_at: measurement.measuredAt,
         received_at: measurement.receivedAt,
+        pump: { isOn: pump.isOn },
       });
     } catch (err) {
       next(err);

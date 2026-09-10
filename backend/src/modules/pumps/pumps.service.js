@@ -19,8 +19,11 @@ async function updateConfig(deviceId, data) {
 // Liga/desliga a bomba por comando explícito do usuário — funciona em qualquer modo
 // (mesmo em "automatic", como uma sobreposição temporária: a próxima leitura abaixo ou
 // acima do limite pode alterar o estado de novo, já que nesse modo o relé é sempre
-// derivado da leitura mais recente).
+// derivado da leitura mais recente). getOrCreate garante a linha antes do update — um
+// dispositivo recém-criado ainda não tem Pump no banco (só é criada lazily), e um
+// update direto contra uma linha inexistente falharia.
 async function setManualState(deviceId, isOn) {
+  await getOrCreate(deviceId);
   return prisma.pump.update({
     where: { deviceId },
     data: isOn ? { isOn: true, turnedOnAt: new Date() } : { isOn: false, turnedOnAt: null },

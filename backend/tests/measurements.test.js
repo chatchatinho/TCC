@@ -23,6 +23,24 @@ describe('POST /api/measurements (ingestão autenticada por dispositivo)', () =>
 
     expect(res.status).toBe(201);
     expect(res.body.id).toBeDefined();
+    // O ESP32 usa esse campo para acionar o relé da bomba — precisa vir em toda
+    // resposta de leitura registrada, mesmo para dispositivos sem bomba configurada
+    // ainda (getOrCreate cria uma com os padrões, isOn false).
+    expect(res.body.pump).toEqual({ isOn: false });
+  });
+
+  test('resposta reflete o estado atual da bomba (ligada manualmente pelo app)', async () => {
+    const { owner, device, secret } = await setupDevice();
+
+    await owner.agent.post(`/api/devices/${device.id}/pump/toggle`).send({ isOn: true });
+
+    const res = await request(app)
+      .post('/api/measurements')
+      .set('X-Device-Key', secret)
+      .send({ device_id: device.deviceIdentifier, temperature: 24.5, humidity: 58 });
+
+    expect(res.status).toBe(201);
+    expect(res.body.pump).toEqual({ isOn: true });
   });
 
   test('token incorreto é rejeitado com 401 e nada é gravado', async () => {
