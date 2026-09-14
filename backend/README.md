@@ -33,9 +33,9 @@ API REST (Node.js + Express) e camada de banco de dados (Prisma sobre PostgreSQL
 npm run prisma:migrate
 ```
 
-Cria/atualiza as tabelas `users`, `devices`, `measurements`, `settings` e `alerts` conforme
-`prisma/schema.prisma`. O modelo completo e as decisões de modelagem estão documentados em
-`../docs/documentacao/01-arquitetura-e-decisoes.md`.
+Cria/atualiza as tabelas `users`, `devices`, `measurements`, `settings`, `pumps` e `alerts`
+conforme `prisma/schema.prisma`. O modelo completo e as decisões de modelagem estão
+documentados em `../docs/documentacao/04-documentacao-tecnica.md`.
 
 ## Populando dados de demonstração
 
@@ -48,11 +48,15 @@ Cria:
 - 1 usuário de teste (`teste@tcc.local` / `Senha@Teste123`) — **apenas para ambiente local de
   desenvolvimento**, nunca use em produção;
 - 1 dispositivo de teste (`ESP32-001`) com um token de API gerado na hora (impresso no console,
-  não é reexibido depois — se perder, rode o seed de novo);
-- 3 horas de medições simuladas (uma a cada 5 minutos), incluindo uma janela de ~20 minutos com
-  temperatura fora do limite configurado;
-- 1 alerta correspondente a essa janela (já resolvido, mas ainda não lido), para demonstrar a
-  notificação "você possui alertas desde seu último acesso" já na Etapa 4.
+  não é reexibido depois — se perder, rode o seed de novo), com sensor de umidade do solo e
+  bomba d'água habilitados;
+- 3 horas de medições geradas (uma a cada 5 minutos), incluindo temperatura, umidade do ar e
+  umidade do solo, com uma janela de ~20 minutos de temperatura fora do limite configurado e
+  de solo seco;
+- os alertas correspondentes a essas janelas (já resolvidos, mas ainda não lidos), para
+  demonstrar a notificação "você possui alertas desde seu último acesso" ao logar;
+- a bomba d'água em modo automático, com o estado (ligada/desligada) já refletindo a janela
+  de solo seco gerada acima.
 
 ## Explorando o banco visualmente
 
