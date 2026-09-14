@@ -171,8 +171,10 @@ Faça login com o usuário de demonstração (criado no passo 9 pelo `db:seed`):
 - **Senha**: `Senha@Teste123`
 
 No Dashboard, você vai ver o dispositivo de demonstração (`ESP32-001`) com o histórico já
-gerado pelo `db:seed` (medições das últimas 3 horas, incluindo uma janela com temperatura
-fora do limite e um alerta correspondente) — mas **nenhum dado novo aparece sozinho**: o
+gerado pelo `db:seed` (medições das últimas 3 horas — temperatura, umidade do ar **e
+umidade do solo**, já que esse dispositivo de demonstração vem com o sensor de solo e a
+bomba d'água habilitados —, incluindo uma janela com temperatura fora do limite, outra de
+solo seco, e os alertas correspondentes) — mas **nenhum dado novo aparece sozinho**: o
 sistema não tem mais um gerador automático de leituras fictícias, então o status desse
 dispositivo aparece como 🔴 Offline (a última leitura do histórico de demonstração já é
 "antiga" do ponto de vista do relógio atual). Isso é esperado neste guia: ele só cobre
