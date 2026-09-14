@@ -16,7 +16,7 @@ Documentação completa em [`docs/`](docs/):
 - [`docs/documentacao/08-explicacao-sistema.md`](docs/documentacao/08-explicacao-sistema.md) — complemento dos guias acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
 - [`docs/documentacao/09-funcao-e-conceito.md`](docs/documentacao/09-funcao-e-conceito.md) — aula completa de como o sistema funciona por dentro (arquitetura, banco de dados, backend, frontend, firmware, testes), para estudo antes da apresentação
 - [`docs/documentacao/10-referencia-pasta-arquivo.md`](docs/documentacao/10-referencia-pasta-arquivo.md) — mapa de referência de cada pasta e cada arquivo do repositório, um por um
-- [`docs/explicacao/11-mapa-de-arquivos-resumo-rapido.md`](docs/explicacao/11-mapa-de-arquivos-resumo-rapido.md) — versão resumida do mapa acima, para ler em 5 minutos
+- [`docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md`](docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md) — versão resumida do mapa acima, para ler em 5 minutos
 
 Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do projeto.
 

@@ -1,11 +1,11 @@
 # Mapa de arquivos — resumo rápido (5 minutos)
 
 > Versão condensada do
-> [`docs/documentacao/10-referencia-pasta-arquivo.md`](../documentacao/10-referencia-pasta-arquivo.md).
+> [`docs/documentacao/10-referencia-pasta-arquivo.md`](10-referencia-pasta-arquivo.md).
 > Aqui cada arquivo tem só uma linha — o suficiente para lembrar "o que é isso" na hora
 > da apresentação. Para o porquê de cada decisão, use o
-> [`09-funcao-e-conceito.md`](../documentacao/09-funcao-e-conceito.md); para o parágrafo
-> completo de cada arquivo, use o [`10`](../documentacao/10-referencia-pasta-arquivo.md).
+> [`09-funcao-e-conceito.md`](09-funcao-e-conceito.md); para o parágrafo
+> completo de cada arquivo, use o [`10`](10-referencia-pasta-arquivo.md).
 
 ```
 TCC/
@@ -207,7 +207,7 @@ TCC/
 | `documentacao/08-explicacao-sistema.md` | Por que cada ferramenta/comando existe |
 | `documentacao/09-funcao-e-conceito.md` | Aula funcional completa (conceitos + código) |
 | `documentacao/10-referencia-pasta-arquivo.md` | Versão longa deste mapa |
-| `explicacao/11-mapa-de-arquivos-resumo-rapido.md` | Este documento |
+| `documentacao/11-mapa-de-arquivos-resumo-rapido.md` | Este documento |
 
 Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do
 projeto.

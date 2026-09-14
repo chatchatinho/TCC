@@ -54,7 +54,7 @@ TCC/
 │       ├── main.jsx / App.jsx / index.css
 │       ├── context/ components/ pages/ services/ utils/
 └── docs/
-    └── documentacao/ (01 a 10 — a documentação do projeto)
+    └── documentacao/ (01 a 11 — a documentação do projeto)
 ```
 
 ## 1. Raiz do repositório
@@ -599,6 +599,8 @@ função por endpoint, sem nenhuma lógica de interface misturada.
   frontend, firmware, testes, um fluxo completo e perguntas prováveis da banca.
 - **`docs/documentacao/10-referencia-pasta-arquivo.md`** — este documento: o
   mapa de referência de **onde** cada coisa está e o que cada arquivo contém.
+- **`docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md`** — versão condensada
+  deste documento, uma linha por arquivo, para revisar em 5 minutos.
 
   (Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do
   projeto.)
