@@ -29,7 +29,7 @@ Arquitetura em **3 camadas**, clássica e adequada para TCC: cliente web (SPA), 
 | Documentação da API | OpenAPI/Swagger via `swagger-jsdoc` + `swagger-ui-express` |
 | Rate limiting | `express-rate-limit` |
 | Testes backend | Jest + Supertest |
-| Testes frontend | Vitest + React Testing Library (básico) |
+| Testes frontend | Vitest + React Testing Library (básico) — planejado nesta etapa, mas não chegou a ser implementado; a verificação do frontend acabou sendo só manual (ver seção 8 do documento 09) |
 | Containerização | Docker + docker-compose (postgres + backend + frontend) — opcional para quem quiser rodar sem instalar nada localmente |
 | Firmware | Arduino framework para ESP32 (C++), `WiFi.h`, `HTTPClient.h`, `ArduinoJson`, biblioteca de sensor (ex.: `DHT sensor library`) |
 

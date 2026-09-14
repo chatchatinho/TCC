@@ -120,7 +120,7 @@ Cada requisição HTTP tem um **verbo** que diz a intenção:
 |---|---|---|
 | `GET` | Ler algo, sem mudar nada | `GET /api/history` — lista o histórico |
 | `POST` | Criar algo novo | `POST /api/devices` — cadastra um dispositivo |
-| `PUT` | Substituir/atualizar algo por completo | `PUT /api/settings` — atualiza as configurações |
+| `PUT` | Substituir/atualizar algo por completo | `PUT /api/devices/:id/settings` — atualiza as configurações do dispositivo |
 | `PATCH` | Atualizar uma parte de algo | `PATCH /api/alerts/:id/read` — só marca como lido |
 | `DELETE` | Remover algo | `DELETE /api/devices/:id` |
 
