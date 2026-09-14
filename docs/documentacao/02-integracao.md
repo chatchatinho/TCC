@@ -63,6 +63,6 @@ verificado de ponta a ponta (via verificação manual em navegador na Etapa 4, e
 firmware nesta etapa): cadastro → login → dashboard → gráficos → alterar limites →
 gerar leitura fora do limite (real via ESP32, ou simulada via botão no dashboard — esse
 botão/endpoint existia nesta etapa do projeto e foi removido depois, ver seção 5.7 do
-[`09-aula-completa-do-sistema.md`](09-aula-completa-do-sistema.md)) → alerta gerado →
+[`09-funcao-e-conceito.md`](09-funcao-e-conceito.md)) → alerta gerado →
 logout → login → notificação do alerta → histórico → filtro → dado do ESP32 refletido no
 sistema.

@@ -1,11 +1,11 @@
 # Mapa de arquivos — resumo rápido (5 minutos)
 
 > Versão condensada do
-> [`docs/documentacao/10-referencia-pasta-arquivo.txt`](../documentacao/10-referencia-pasta-arquivo.txt).
+> [`docs/documentacao/10-referencia-pasta-arquivo.md`](../documentacao/10-referencia-pasta-arquivo.md).
 > Aqui cada arquivo tem só uma linha — o suficiente para lembrar "o que é isso" na hora
 > da apresentação. Para o porquê de cada decisão, use o
-> [`09-funcao-e-conceito.txt`](../documentacao/09-funcao-e-conceito.txt); para o parágrafo
-> completo de cada arquivo, use o [`10`](../documentacao/10-referencia-pasta-arquivo.txt).
+> [`09-funcao-e-conceito.md`](../documentacao/09-funcao-e-conceito.md); para o parágrafo
+> completo de cada arquivo, use o [`10`](../documentacao/10-referencia-pasta-arquivo.md).
 
 ```
 TCC/
@@ -198,16 +198,16 @@ TCC/
 
 | Documento | Conteúdo em uma linha |
 |---|---|
-| `documentacao/01-arquitetura-e-decisoes.txt` | Arquitetura, stack e por quê (registro da Etapa 1 — plano original, antes da implementação) |
-| `documentacao/02-integracao.txt` | Verificação de integração ponta a ponta |
-| `documentacao/03-seguranca.txt` | Revisão de segurança |
-| `documentacao/04-documentacao-tecnica.txt` | Documentação técnica completa, com diagramas |
-| `documentacao/05-guia-teste-iniciante.txt` | Instalar tudo do zero (Windows) |
-| `documentacao/06-guia-teste-arduino-real.txt` | Testar com ESP32 físico (DHT11, e opcionalmente solo/bomba) |
-| `documentacao/08-explicacao-sistema.txt` | Por que cada ferramenta/comando existe |
-| `documentacao/09-funcao-e-conceito.txt` | Aula funcional completa (conceitos + código) |
-| `documentacao/10-referencia-pasta-arquivo.txt` | Versão longa deste mapa |
-| `explicacao/11-mapa-de-arquivos-resumo-rapido.txt` | Este documento |
+| `documentacao/01-arquitetura-e-decisoes.md` | Arquitetura, stack e por quê (registro da Etapa 1 — plano original, antes da implementação) |
+| `documentacao/02-integracao.md` | Verificação de integração ponta a ponta |
+| `documentacao/03-seguranca.md` | Revisão de segurança |
+| `documentacao/04-documentacao-tecnica.md` | Documentação técnica completa, com diagramas |
+| `documentacao/05-guia-teste-iniciante.md` | Instalar tudo do zero (Windows) |
+| `documentacao/06-guia-teste-arduino-real.md` | Testar com ESP32 físico (DHT11, e opcionalmente solo/bomba) |
+| `documentacao/08-explicacao-sistema.md` | Por que cada ferramenta/comando existe |
+| `documentacao/09-funcao-e-conceito.md` | Aula funcional completa (conceitos + código) |
+| `documentacao/10-referencia-pasta-arquivo.md` | Versão longa deste mapa |
+| `explicacao/11-mapa-de-arquivos-resumo-rapido.md` | Este documento |
 
 Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do
 projeto.

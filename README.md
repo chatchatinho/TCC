@@ -7,17 +7,18 @@ alertas automáticos quando os valores saem da faixa configurada.
 
 Documentação completa em [`docs/`](docs/):
 
-- [`docs/documentacao/01-arquitetura-e-decisoes.md`](docs/documentacao/01-arquitetura-e-decisoes.md) — arquitetura, stack, modelo de dados, decisões
+- [`docs/documentacao/01-arquitetura-e-decisoes.md`](docs/documentacao/01-arquitetura-e-decisoes.md) — arquitetura, stack, modelo de dados, decisões (registro da Etapa 1 — plano original, antes da implementação)
 - [`docs/documentacao/02-integracao.md`](docs/documentacao/02-integracao.md) — verificação de integração ponta a ponta
 - [`docs/documentacao/03-seguranca.md`](docs/documentacao/03-seguranca.md) — revisão de segurança
 - [`docs/documentacao/04-documentacao-tecnica.md`](docs/documentacao/04-documentacao-tecnica.md) — documentação técnica completa (com diagramas)
 - [`docs/documentacao/05-guia-teste-iniciante.md`](docs/documentacao/05-guia-teste-iniciante.md) — instalação passo a passo para quem nunca configurou um ambiente de desenvolvimento (Windows, do zero)
-- [`docs/documentacao/08-para-que-serve-cada-coisa.md`](docs/documentacao/08-para-que-serve-cada-coisa.md) — complemento do guia acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
-- [`docs/documentacao/06-guia-teste-arduino-real.md`](docs/documentacao/06-guia-teste-arduino-real.md) — testando com um ESP32 físico + sensor DHT11 (fiação, Arduino IDE, firmware)
-- [`docs/documentacao/07-metodologia-tcc.md`](docs/documentacao/07-metodologia-tcc.md) — texto de apoio para o TCC (introdução, objetivos, metodologia)
-- [`docs/documentacao/09-aula-completa-do-sistema.md`](docs/documentacao/09-aula-completa-do-sistema.md) — aula completa de como o sistema funciona por dentro (arquitetura, banco de dados, backend, frontend, firmware, testes), para estudo antes da apresentação
-- [`docs/documentacao/10-cada-pasta-e-arquivo-explicado.md`](docs/documentacao/10-cada-pasta-e-arquivo-explicado.md) — mapa de referência de cada pasta e cada arquivo do repositório, um por um
-- [`docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md`](docs/documentacao/11-mapa-de-arquivos-resumo-rapido.md) — versão resumida do mapa acima, para ler em 5 minutos
+- [`docs/documentacao/06-guia-teste-arduino-real.md`](docs/documentacao/06-guia-teste-arduino-real.md) — testando com um ESP32 físico + sensor DHT11, e opcionalmente sensor de umidade do solo + bomba d'água (fiação, Arduino IDE, firmware)
+- [`docs/documentacao/08-explicacao-sistema.md`](docs/documentacao/08-explicacao-sistema.md) — complemento dos guias acima: para que serve cada ferramenta, comando e arquivo (o "porquê", não o "como")
+- [`docs/documentacao/09-funcao-e-conceito.md`](docs/documentacao/09-funcao-e-conceito.md) — aula completa de como o sistema funciona por dentro (arquitetura, banco de dados, backend, frontend, firmware, testes), para estudo antes da apresentação
+- [`docs/documentacao/10-referencia-pasta-arquivo.md`](docs/documentacao/10-referencia-pasta-arquivo.md) — mapa de referência de cada pasta e cada arquivo do repositório, um por um
+- [`docs/explicacao/11-mapa-de-arquivos-resumo-rapido.md`](docs/explicacao/11-mapa-de-arquivos-resumo-rapido.md) — versão resumida do mapa acima, para ler em 5 minutos
+
+Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do projeto.
 
 ## Funcionalidades
 

@@ -7,12 +7,11 @@
 > código de verdade — porque bate: todo trecho citado abaixo foi copiado direto dos
 > arquivos do projeto, não reescrito de memória. Se o professor perguntar qualquer coisa
 > sobre "por que você fez assim", a resposta está aqui, explicada, e você pode abrir o
-> arquivo correspondente na hora para mostrar. Vale lembrar também que o
-> [`docs/documentacao/07-metodologia-tcc.md`](07-metodologia-tcc.md) já documenta,
-> honestamente, que uma IA (Claude Code) foi usada como ferramenta de apoio durante o
-> desenvolvimento — isso é normal e cada vez mais comum na indústria; o que importa para
-> a banca é você entender e conseguir explicar **por que** o sistema foi construído
-> assim, o que este documento existe para garantir.
+> arquivo correspondente na hora para mostrar. Vale lembrar também, honestamente, que
+> uma IA (Claude Code) foi usada como ferramenta de apoio durante o desenvolvimento —
+> isso é normal e cada vez mais comum na indústria; o que importa para a banca é você
+> entender e conseguir explicar **por que** o sistema foi construído assim, o que este
+> documento existe para garantir.
 
 ## Sumário
 
@@ -49,7 +48,7 @@ TCC/
 
 Cada pasta tem seu próprio `README.md` com detalhes de instalação — este documento
 explica o **funcionamento interno**, não a instalação (isso já está no
-[guia 05](05-guia-teste-iniciante.md) e no [complemento 08](08-para-que-serve-cada-coisa.md)).
+[guia 05](05-guia-teste-iniciante.md) e no [complemento 08](08-explicacao-sistema.md)).
 
 ## 2. Visão geral: as três camadas
 

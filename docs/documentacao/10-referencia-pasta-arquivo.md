@@ -1,12 +1,12 @@
 # Cada pasta e cada arquivo do projeto, explicados
 
 > Este documento é o complemento de referência do
-> [`docs/documentacao/09-aula-completa-do-sistema.md`](09-aula-completa-do-sistema.md).
+> [`docs/documentacao/09-funcao-e-conceito.md`](09-funcao-e-conceito.md).
 > Lá, a explicação segue por **conceito** (como a autenticação funciona, como o motor de
-> alertas decide abrir/fechar um evento, como o Dashboard simula leituras) — aqui, a
-> explicação segue a **árvore de pastas**: todo arquivo do repositório, um por um, na
+> alertas decide abrir/fechar um evento, como a bomba decide ligar/desligar sozinha) —
+> aqui, a explicação segue a **árvore de pastas**: todo arquivo do repositório, um por um, na
 > ordem em que aparece no projeto. Use este documento para responder "o que tem dentro
-> desse arquivo?" e o [`09`](09-aula-completa-do-sistema.md) para responder "por que o
+> desse arquivo?" e o [`09`](09-funcao-e-conceito.md) para responder "por que o
 > sistema faz isso?". Onde um arquivo já foi explicado em profundidade no `09`, este
 > documento aponta a seção em vez de repetir o texto inteiro.
 
@@ -55,7 +55,7 @@ TCC/
 │       ├── context/ components/ pages/ services/ utils/
 └── docs/
     ├── documentacao/ (01 a 10 — a documentação do projeto)
-    └── Teste simples/ (anotações pessoais de teste)
+    └── Teste/ (cópia dos guias 05/06 + anotações pessoais de teste)
 ```
 
 ## 1. Raiz do repositório
@@ -86,7 +86,7 @@ TCC/
 - **`esp32/firmware/firmware.ino`** — o sketch principal, com todo o fluxo de
   `setup()`/`loop()`, conexão e reconexão de Wi-Fi, sincronização de hora via NTP, e
   montagem/envio do JSON de cada leitura por HTTP(S). Explicado função por função na
-  [seção 7 do documento 09](09-aula-completa-do-sistema.md#7-o-firmware-do-esp32).
+  [seção 7 do documento 09](09-funcao-e-conceito.md#7-o-firmware-do-esp32).
 - **`esp32/firmware/config.example.h`** — modelo de configuração com placeholders
   (`SUA_REDE_WIFI`, `COLE_AQUI_O_TOKEN_GERADO_PELO_SISTEMA`, etc.). Deve ser copiado
   para `config.h` (que fica de fora do Git, no `.gitignore`, por conter credenciais
@@ -159,7 +159,7 @@ TCC/
   (`User`, `Device`, `Measurement`, `Setting`, `Alert`, `Pump`) e os 4 enums
   (`AlertVariable`, `AlertDirection`, `AlertStatus`, `PumpMode`), campo por campo, com seus tipos,
   valores padrão e relações. Explicado tabela por tabela na
-  [seção 4 do documento 09](09-aula-completa-do-sistema.md#4-o-banco-de-dados-tabela-por-tabela).
+  [seção 4 do documento 09](09-funcao-e-conceito.md#4-o-banco-de-dados-tabela-por-tabela).
 - **`seed.js`** — script (`npm run db:seed`) que **apaga tudo** (`alert.deleteMany()`,
   `measurement.deleteMany()`, `setting.deleteMany()`, `device.deleteMany()`,
   `user.deleteMany()`, nessa ordem, respeitando as dependências entre tabelas) e recria
@@ -201,7 +201,7 @@ TCC/
   (`/api/health`), a montagem da documentação interativa (`/api/docs`, a partir do
   `openapi.yaml` acima), o registro de todas as rotas de cada módulo sob `/api/...`, e
   por último os dois handlers de erro. Detalhado na
-  [seção 5.1 do documento 09](09-aula-completa-do-sistema.md#51-o-pipeline-do-express-appjs).
+  [seção 5.1 do documento 09](09-funcao-e-conceito.md#51-o-pipeline-do-express-appjs).
 - **`server.js`** — o ponto de entrada de verdade: só importa `app.js` e chama
   `app.listen(API_PORT)`. É separado de `app.js` de propósito — os testes automatizados
   importam `app.js` diretamente (via Supertest) sem precisar abrir uma porta de rede de
@@ -216,11 +216,11 @@ TCC/
   (assina um JWT com o ID do usuário, válido por 7 dias), `verifySessionToken`
   (decodifica e valida), `setSessionCookie`/`clearSessionCookie` (grava/remove o
   cookie `session`, `httpOnly`, `sameSite=lax`, `secure` só em produção). Ver
-  [seção 3.6 e 5.3 do documento 09](09-aula-completa-do-sistema.md#36-autenticação-sessão-cookie-e-jwt).
+  [seção 3.6 e 5.3 do documento 09](09-funcao-e-conceito.md#36-autenticação-sessão-cookie-e-jwt).
 - **`AppError.js`** — uma classe de erro customizada (`extends Error`) que carrega um
   `statusCode` HTTP junto da mensagem — é assim que o código sinaliza "isso é um erro
   esperado de negócio" (senha errada, 404, conflito) em vez de deixar virar um `500`
-  genérico. Ver [seção 5.11](09-aula-completa-do-sistema.md#511-tratamento-de-erros-centralizado).
+  genérico. Ver [seção 5.11](09-funcao-e-conceito.md#511-tratamento-de-erros-centralizado).
 - **`serializers.js`** — duas funções, `serializeUser` e `serializeDevice`, que
   escolhem manualmente quais campos de cada modelo do Prisma podem sair numa resposta
   HTTP. É aqui que `passwordHash` e `deviceSecretHash` são deliberadamente **excluídos**
@@ -240,7 +240,7 @@ TCC/
 - **`auth.js`** — `requireAuth`, o middleware que protege toda rota de usuário
   autenticado: lê o cookie de sessão, valida o JWT, e só então deixa a requisição
   continuar (com `req.userId` preenchido). Ver
-  [seção 5.3](09-aula-completa-do-sistema.md#53-as-duas-autenticações-usuário-vs-dispositivo).
+  [seção 5.3](09-funcao-e-conceito.md#53-as-duas-autenticações-usuário-vs-dispositivo).
 - **`deviceAuth.js`** — `requireDeviceAuth`, o equivalente para o ESP32: lê
   `device_id` do corpo e o token do header `X-Device-Key`, busca o dispositivo no
   banco, e compara o token recebido com o hash salvo via `bcrypt.compare`. Também
@@ -262,7 +262,7 @@ TCC/
 
 Cada módulo segue o mesmo padrão de três arquivos (rota → validação → regra de
 negócio), explicado em geral na
-[seção 5.2 do documento 09](09-aula-completa-do-sistema.md#52-o-padrão-de-três-camadas-em-cada-módulo).
+[seção 5.2 do documento 09](09-funcao-e-conceito.md#52-o-padrão-de-três-camadas-em-cada-módulo).
 Abaixo, o que cada arquivo específico contém:
 
 **`auth/`** (cadastro, login, sessão, recuperação de senha)
@@ -270,7 +270,7 @@ Abaixo, o que cada arquivo específico contém:
   `/forgot-password`, `/reset-password` e `GET /me`.
 - `auth.service.js` — a lógica de cada uma dessas ações: hash de senha com bcrypt,
   geração/validação do token de redefinição (hash SHA-256, não bcrypt — motivo
-  explicado na [seção 5.4](09-aula-completa-do-sistema.md#54-módulo-auth-registro-login-recuperação-de-senha)),
+  explicado na [seção 5.4](09-funcao-e-conceito.md#54-módulo-auth-registro-login-recuperação-de-senha)),
   mensagens de erro genéricas para não vazar quais e-mails existem, e as funções
   `changePassword`/`deleteAccount` (reaproveitadas pelo módulo `users`).
 - `auth.validation.js` — os schemas Zod de cadastro/login/recuperação, incluindo a
@@ -295,7 +295,7 @@ já que ambos são configurações "de um dispositivo específico")
 - `devices.service.js` — geração do identificador público (`ESP32-XXXXXX`, se não
   informado), geração e hash do token, e `findOwned()` — a função que garante (com
   `404`, nunca `403`) que um usuário só acessa dispositivos que são dele. Ver
-  [seção 5.6](09-aula-completa-do-sistema.md#56-módulo-devices-cadastro-de-esp32s).
+  [seção 5.6](09-funcao-e-conceito.md#56-módulo-devices-cadastro-de-esp32s).
 - `devices.validation.js` — nome (2 a 100 caracteres) e um identificador opcional
   customizado (letras, números, `-`/`_`, 3 a 50 caracteres) na criação.
 
@@ -305,7 +305,7 @@ já que ambos são configurações "de um dispositivo específico")
   usuário). O endpoint `POST /measurements/simulate` existiu numa versão anterior e foi
   removido junto do gerador automático de leituras do Dashboard (seção 4.5) assim que o
   hardware real passou a funcionar de ponta a ponta.
-  Ver [seção 5.7](09-aula-completa-do-sistema.md#57-módulo-measurements-a-porta-de-entrada-dos-dados).
+  Ver [seção 5.7](09-funcao-e-conceito.md#57-módulo-measurements-a-porta-de-entrada-dos-dados).
 - `measurements.service.js` — `create()` (grava a medição — incluindo `soilMoisture`
   quando enviado —, atualiza `lastSeenAt`, dispara a avaliação de alertas e, se houver
   leitura de solo, a avaliação da bomba), `resolveMeasuredAt()` (trata timestamp
@@ -319,7 +319,7 @@ já que ambos são configurações "de um dispositivo específico")
 `settings.routes.js` próprio: as rotas moram em `devices.routes.js`, ver abaixo)
 - `settings.service.js` — `getOrCreate()` (cria configuração padrão se o dispositivo
   ainda não tiver uma), `update()`, `computeThresholds()` (a fórmula ideal±tolerância
-  com override opcional, [seção 5.8](09-aula-completa-do-sistema.md#58-módulo-settings-cálculo-da-faixa-aceitável)),
+  com override opcional, [seção 5.8](09-funcao-e-conceito.md#58-módulo-settings-cálculo-da-faixa-aceitável)),
   `evaluateReadingStatus()` (classifica uma leitura como `normal`/`out_of_range` por
   variável). Desde que `Setting` passou a ser 1-para-1 com `Device` (não mais com
   `User`), toda essa lógica passou a receber um `deviceId` em vez de um `userId`.
@@ -333,7 +333,7 @@ já que ambos são configurações "de um dispositivo específico")
   vez que é referenciada), `updateConfig()`, `setManualState()` (toggle manual — chama
   `getOrCreate()` primeiro, para não falhar num dispositivo cuja `Pump` ainda não existe),
   `evaluateMeasurement()` (a lógica de "liga sozinha depois de X minutos secos", ver
-  [seção 5.8b](09-aula-completa-do-sistema.md#58b-módulo-pumps-quando-a-bomba-liga-sozinha)).
+  [seção 5.8b](09-funcao-e-conceito.md#58b-módulo-pumps-quando-a-bomba-liga-sozinha)).
 - `pumps.validation.js` — schemas Zod de configuração (`mode`, `moistureThreshold`,
   `belowThresholdMinutes`) e do toggle manual.
 
@@ -343,14 +343,14 @@ já que ambos são configurações "de um dispositivo específico")
 - `alerts.service.js` — o arquivo mais importante deste módulo:
   `evaluateMeasurement()` (decide abrir/atualizar/fechar um alerta a cada leitura),
   `list()`, `summary()`, `markRead()`. Explicado com um exemplo numérico completo na
-  [seção 5.9](09-aula-completa-do-sistema.md#59-o-motor-de-alertas-em-detalhe).
+  [seção 5.9](09-funcao-e-conceito.md#59-o-motor-de-alertas-em-detalhe).
 - `alerts.validation.js` — só o schema da listagem (`status`, `page`, `pageSize`).
 
 **`history/`** (consulta e exportação)
 - `history.routes.js` — `GET /history` (paginado) e `GET /history/export` (CSV,
   monta o cabeçalho e as linhas manualmente e devolve como arquivo para download).
 - `history.service.js` — `buildWhere()` (monta os filtros como uma lista de condições
-  combinadas com E, ver [seção 5.10](09-aula-completa-do-sistema.md#510-módulo-history-filtros-dinâmicos-e-exportação)),
+  combinadas com E, ver [seção 5.10](09-funcao-e-conceito.md#510-módulo-history-filtros-dinâmicos-e-exportação)),
   `list()`, `listForExport()` (limitado a 5000 linhas), `annotateStatus()`.
 - `history.validation.js` — todos os filtros aceitos na query string (dispositivo,
   período, faixas de valor, situação por variável, ordenação, paginação).
@@ -358,7 +358,7 @@ já que ambos são configurações "de um dispositivo específico")
 ### 3.4 `backend/tests/` — a suíte automatizada
 
 Cada arquivo aqui é descrito, um por um, na
-[seção 8 do documento 09](09-aula-completa-do-sistema.md#8-testes-automatizados-o-que-existe-de-verdade).
+[seção 8 do documento 09](09-funcao-e-conceito.md#8-testes-automatizados-o-que-existe-de-verdade).
 Resumo rápido de cada um:
 
 - **`auth.test.js`** — cadastro e login (casos válidos e inválidos).
@@ -440,7 +440,7 @@ Resumo rápido de cada um:
   incorreta, executando alguns deles duas vezes de propósito só em desenvolvimento).
 - **`App.jsx`** — define todas as rotas da aplicação e a ordem dos provedores de
   contexto (`ThemeProvider` → `BrowserRouter` → `AuthProvider`). Detalhado na
-  [seção 6.1 do documento 09](09-aula-completa-do-sistema.md#61-roteamento-appjsx).
+  [seção 6.1 do documento 09](09-funcao-e-conceito.md#61-roteamento-appjsx).
 - **`index.css`** — o CSS global: importa o Tailwind, redefine o critério do modo
   escuro para depender de uma classe (`.dark`) em vez de só a preferência do sistema
   operacional (necessário para o interruptor manual em Configurações funcionar),
@@ -452,7 +452,7 @@ Resumo rápido de cada um:
 
 - **`AuthContext.jsx`** — `AuthProvider`/`useAuth()`: guarda quem é o usuário logado,
   expõe `login`/`register`/`logout`, e confirma a sessão (`GET /auth/me`) assim que o
-  app carrega. Ver [seção 6.2](09-aula-completa-do-sistema.md#62-contextos-globais).
+  app carrega. Ver [seção 6.2](09-funcao-e-conceito.md#62-contextos-globais).
 - **`ThemeContext.jsx`** — `ThemeProvider`/`useTheme()`: modo escuro (seguindo o
   sistema até o usuário escolher manualmente), cor de destaque (8 opções), tamanho de
   fonte (3 opções) e redução de movimento — tudo persistido em `localStorage`. Também
@@ -463,7 +463,7 @@ Resumo rápido de cada um:
 - **`Layout.jsx`** — a "moldura" comum a toda página logada: barra lateral de
   navegação (com os 6 itens de menu e seus ícones em emoji), cabeçalho mobile, avatar
   e botão de sair, e a bolinha de contagem de notificações não lidas (atualizada por
-  polling a cada 5s). Ver [seção 6.2](09-aula-completa-do-sistema.md#62-contextos-globais)
+  polling a cada 5s). Ver [seção 6.2](09-funcao-e-conceito.md#62-contextos-globais)
   para o contexto de autenticação que ele consome.
 - **`ProtectedRoute.jsx`** — envolve qualquer página que exige login: mostra
   "Carregando…" enquanto `AuthContext` ainda não confirmou a sessão, redireciona para
@@ -509,7 +509,7 @@ Resumo rápido de cada um:
   de dispositivo e resumo dos outros dispositivos — tudo atualizado por polling a cada 3
   segundos. Não existe mais simulação automática de leituras: um dispositivo sem
   hardware real enviando dados aparece simplesmente como offline. Detalhada por completo
-  na [seção 6.4 do documento 09](09-aula-completa-do-sistema.md#64-página-por-página).
+  na [seção 6.4 do documento 09](09-funcao-e-conceito.md#64-página-por-página).
 - **`History.jsx`** — tabela paginada e ordenável, painel de filtros colapsável
   (período, dispositivo, faixas de valor — incluindo umidade do solo — com *debounce*,
   situação por variável) e exportação CSV.
@@ -535,7 +535,7 @@ função por endpoint, sem nenhuma lógica de interface misturada.
 
 - **`api.js`** — cria a instância do axios com `baseURL: import.meta.env.VITE_API_URL`
   e `withCredentials: true` (o que faz o cookie de sessão ser enviado em toda
-  requisição). Ver [seção 6.3](09-aula-completa-do-sistema.md#63-a-camada-de-serviços-e-o-axios).
+  requisição). Ver [seção 6.3](09-funcao-e-conceito.md#63-a-camada-de-serviços-e-o-axios).
 - **`auth.js`** — `register`, `login`, `logout`, `getCurrentUser`, `forgotPassword`,
   `resetPassword`.
 - **`users.js`** — `updateProfile`, `changePassword`, `deleteAccount`.
@@ -558,7 +558,7 @@ função por endpoint, sem nenhuma lógica de interface misturada.
 - **`format.js`** — `formatDateTime`/`formatDate`/`formatTime` (convertem UTC para
   `America/Sao_Paulo` só na hora de exibir, via `Intl.DateTimeFormat`),
   `formatNumber` (arredondamento para exibição) e `formatRelative` ("há 2 minutos",
-  usado nos status de dispositivo). Ver [seção 6.5](09-aula-completa-do-sistema.md#65-fuso-horário).
+  usado nos status de dispositivo). Ver [seção 6.5](09-funcao-e-conceito.md#65-fuso-horário).
 - **`number.js`** — `parseDecimal`/`isValidDecimal`/`isValidOptionalDecimal`: aceitam
   tanto vírgula quanto ponto como separador decimal nos formulários (o
   `<input type="number">` nativo do navegador rejeita vírgula silenciosamente — um bug
@@ -592,15 +592,18 @@ função por endpoint, sem nenhuma lógica de interface misturada.
   zero, para quem nunca configurou um ambiente de desenvolvimento (Windows).
 - **`docs/documentacao/06-guia-teste-arduino-real.md`** — como testar com um ESP32
   físico de verdade + sensor DHT11.
-- **`docs/documentacao/07-metodologia-tcc.md`** — texto de apoio para a redação do
-  TCC (introdução, objetivos, metodologia, modelo conceitual, referências).
-- **`docs/documentacao/08-para-que-serve-cada-coisa.md`** — complemento do guia 05:
+- **`docs/documentacao/08-explicacao-sistema.md`** — complemento do guia 05:
   para que serve cada ferramenta/comando/arquivo de configuração (o "porquê", não o
   "como" — ex.: por que existe um `.env`, o que o PostgreSQL faz).
-- **`docs/documentacao/09-aula-completa-do-sistema.md`** — a aula conceitual de como
+- **`docs/documentacao/09-funcao-e-conceito.md`** — a aula conceitual de como
   o sistema **funciona**: arquitetura, conceitos do zero, banco de dados, backend,
   frontend, firmware, testes, um fluxo completo e perguntas prováveis da banca.
-- **`docs/documentacao/10-cada-pasta-e-arquivo-explicado.md`** — este documento: o
+- **`docs/documentacao/10-referencia-pasta-arquivo.md`** — este documento: o
   mapa de referência de **onde** cada coisa está e o que cada arquivo contém.
-- **`docs/Teste simples/Tutorial ESP.md`** e **`Tutorial escola.md`** — anotações
-  pessoais de teste/estudo, fora do padrão numerado da pasta `documentacao/`.
+
+  (Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do
+  projeto.)
+- **`docs/Teste/`** — cópia dos guias `05-guia-teste-iniciante.md` e
+  `06-guia-teste-arduino-real.md` (mesmo conteúdo dos originais em `documentacao/`), mais
+  **`Tutorial ESP.md`** e **`Tutorial escola.md`**, anotações pessoais de teste/estudo,
+  fora do padrão numerado da pasta `documentacao/`.
