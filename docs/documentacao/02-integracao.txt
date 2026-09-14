@@ -45,8 +45,8 @@ já testado.
 3. Confirmar no log: conexão Wi-Fi ✓, sincronização NTP ✓, leitura do DHT11 ✓, envio
    HTTP com resposta `201` ✓.
 4. Abrir o dashboard (`frontend`, logado com o usuário dono do dispositivo) e confirmar
-   que a leitura aparece em até ~10s (intervalo de polling) sem precisar recarregar a
-   página.
+   que a leitura aparece em até ~3s (intervalo de polling atual do Dashboard) sem
+   precisar recarregar a página.
 5. Desligar o Wi-Fi do roteador por ~1 minuto e religar — confirmar no Monitor Serial que
    o firmware tenta reconectar sozinho e volta a enviar leituras sem precisar resetar a
    placa.

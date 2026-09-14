@@ -170,10 +170,16 @@ Faça login com o usuário de demonstração (criado no passo 9 pelo `db:seed`):
 - **E-mail**: `teste@tcc.local`
 - **Senha**: `Senha@Teste123`
 
-No Dashboard, leituras simuladas aparecem sozinhas, automaticamente, a cada 2 segundos —
-não precisa clicar em nada. Espere alguns segundos e observe os gráficos e o card de
-temperatura/umidade se atualizando; de vez em quando (proporção de 5 a cada 105 leituras)
-uma leitura vem fora do limite configurado, gerando um alerta.
+No Dashboard, você vai ver o dispositivo de demonstração (`ESP32-001`) com o histórico já
+gerado pelo `db:seed` (medições das últimas 3 horas, incluindo uma janela com temperatura
+fora do limite e um alerta correspondente) — mas **nenhum dado novo aparece sozinho**: o
+sistema não tem mais um gerador automático de leituras fictícias, então o status desse
+dispositivo aparece como 🔴 Offline (a última leitura do histórico de demonstração já é
+"antiga" do ponto de vista do relógio atual). Isso é esperado neste guia: ele só cobre
+instalar e navegar pela interface com dados já existentes. Para ver o Dashboard
+atualizando ao vivo, com leituras novas chegando a cada poucos segundos, é preciso um
+ESP32 físico de verdade — siga o
+[`06-guia-teste-arduino-real.md`](06-guia-teste-arduino-real.md) a partir daqui.
 
 ## Problemas comuns e soluções
 
