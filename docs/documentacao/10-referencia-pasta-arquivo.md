@@ -54,8 +54,7 @@ TCC/
 │       ├── main.jsx / App.jsx / index.css
 │       ├── context/ components/ pages/ services/ utils/
 └── docs/
-    ├── documentacao/ (01 a 10 — a documentação do projeto)
-    └── Teste/ (cópia dos guias 05/06 + anotações pessoais de teste)
+    └── documentacao/ (01 a 10 — a documentação do projeto)
 ```
 
 ## 1. Raiz do repositório
@@ -603,7 +602,3 @@ função por endpoint, sem nenhuma lógica de interface misturada.
 
   (Não existe um documento "07" — a numeração pula de 06 para 08 desde o início do
   projeto.)
-- **`docs/Teste/`** — cópia dos guias `05-guia-teste-iniciante.md` e
-  `06-guia-teste-arduino-real.md` (mesmo conteúdo dos originais em `documentacao/`), mais
-  **`Tutorial ESP.md`** e **`Tutorial escola.md`**, anotações pessoais de teste/estudo,
-  fora do padrão numerado da pasta `documentacao/`.
